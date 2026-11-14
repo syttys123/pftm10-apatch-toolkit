@@ -4,6 +4,9 @@
 
 - document runtime and physical cleanup for third-party preload partitions
 - add post-boot acceptance checks for non-verity dynamic partition writes
+- bump `pftm10-control` to 1.0.2 with health, preload, root-context, and KPM
+  diagnostics
+- record `health=ok` or `health=failed` automatically on every boot
 
 ## v1.0.1 - 2026-11-14
 

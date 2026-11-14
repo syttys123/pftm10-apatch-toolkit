@@ -1,5 +1,6 @@
 #!/system/bin/sh
 
+MODDIR=${0%/*}
 STATE=/data/adb/pftm10-control
 LOG="$STATE/boot.log"
 
@@ -21,5 +22,8 @@ done
     echo "apd=$(/data/adb/apd -V 2>&1)"
     echo "kernel=$(uname -a 2>&1)"
 } >> "$LOG"
+
+"$MODDIR/bin/pftm10ctl" health >> "$LOG" 2>&1
+echo "health_rc=$?" >> "$LOG"
 
 chmod 0600 "$LOG"

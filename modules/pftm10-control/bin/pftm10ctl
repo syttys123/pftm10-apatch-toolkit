@@ -4,13 +4,67 @@ STATE=/data/adb/pftm10-control
 LOG="$STATE/boot.log"
 
 usage() {
-    echo "usage: pftm10ctl {status|bootlog|kpm|enforcing|permissive}"
+    echo "usage: pftm10ctl {status|health|preload|root|bootlog|kpm|enforcing|permissive}"
 }
 
 if [ "$(id -u)" != "0" ]; then
     echo "pftm10ctl requires root" >&2
     exit 1
 fi
+
+preload_status() {
+    preload_mount=$(mount | grep " on /mnt/vendor/my_preload " | head -n 1)
+    if [ -z "$preload_mount" ]; then
+        echo "preload_mount=missing"
+        echo "preload_del_app_entries=unknown"
+        echo "preload_build_prop=unknown"
+        return 1
+    fi
+
+    entries=$(find /mnt/vendor/my_preload/del-app -mindepth 1 -maxdepth 1 2>/dev/null | wc -l | tr -d ' ')
+    build_prop=no
+    if [ -f /mnt/vendor/my_preload/build.prop ]; then
+        build_prop=yes
+    fi
+
+    echo "preload_mount=present"
+    echo "preload_del_app_entries=$entries"
+    echo "preload_build_prop=$build_prop"
+
+    [ "$entries" = "0" ] && [ "$build_prop" = "yes" ]
+}
+
+health_status() {
+    rc=0
+    echo "uid=$(id -u)"
+    echo "context=$(cat /proc/self/attr/current 2>/dev/null)"
+    echo "build=$(getprop ro.build.display.id)"
+    echo "boot_completed=$(getprop sys.boot_completed)"
+    echo "locked=$(getprop ro.boot.flash.locked)"
+    echo "verified=$(getprop ro.boot.verifiedbootstate)"
+    echo "selinux=$(getenforce 2>&1)"
+    echo "control_prop=$(getprop ro.pftm10.control)"
+    echo "apd=$(/data/adb/apd -V 2>&1)"
+    echo "kernel=$(uname -r)"
+
+    if [ "$(id -u)" != "0" ]; then
+        rc=1
+    fi
+    if [ "$(getprop sys.boot_completed)" != "1" ]; then
+        rc=1
+    fi
+    if [ "$(getprop ro.pftm10.control)" != "active" ]; then
+        rc=1
+    fi
+    preload_status || rc=1
+
+    if [ "$rc" -eq 0 ]; then
+        echo "health=ok"
+    else
+        echo "health=failed"
+    fi
+    return "$rc"
+}
 
 case "$1" in
     status)
@@ -23,11 +77,23 @@ case "$1" in
         echo "apd=$(/data/adb/apd -V 2>&1)"
         echo "kernel=$(uname -r)"
         ;;
+    health)
+        health_status
+        exit $?
+        ;;
+    preload)
+        preload_status
+        exit $?
+        ;;
+    root)
+        id
+        echo "context=$(cat /proc/self/attr/current 2>/dev/null)"
+        ;;
     bootlog)
         tail -n 40 "$LOG" 2>/dev/null
         ;;
     kpm)
-        dmesg | grep -i "kpm hello" | tail -n 20
+        dmesg | grep -Ei "pftm10-kprobe|kpm hello" | tail -n 20
         ;;
     enforcing)
         setenforce 1
