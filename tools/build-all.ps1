@@ -39,8 +39,18 @@ if ($LASTEXITCODE -ne 0) {
     throw "KPM verification failed"
 }
 
+$moduleProp = Get-Content -LiteralPath (Join-Path $repoRoot 'modules\pftm10-control\module.prop')
+$moduleVersionLine = $moduleProp |
+    Where-Object { $_ -match '^version=' } |
+    Select-Object -First 1
+if (-not $moduleVersionLine) {
+    throw "Cannot determine current module version"
+}
+$moduleVersion = ($moduleVersionLine -split '=', 2)[1].Trim()
+$expectedModuleZip = "pftm10-control-v$moduleVersion.zip"
+
 $artifacts = Get-ChildItem -LiteralPath $outputRoot -File |
-    Where-Object { $_.Extension -in @('.zip', '.kpm') } |
+    Where-Object { $_.Name -in @($expectedModuleZip, 'pftm10-kprobe.kpm') } |
     ForEach-Object {
         [ordered]@{
             name = $_.Name
@@ -51,7 +61,7 @@ $artifacts = Get-ChildItem -LiteralPath $outputRoot -File |
     }
 
 $manifest = [ordered]@{
-    release = 'v1.0.2'
+    release = 'v1.1.0'
     builder = 'syttys123'
     artifacts = $artifacts
 }
