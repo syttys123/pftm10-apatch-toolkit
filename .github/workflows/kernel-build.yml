@@ -68,12 +68,20 @@ jobs:
           test -f "$(dirname "$KERNEL_DIR")/vendor/oplus/kernel/oplus_performance/sched_assist/Kconfig"
           test -f "$(dirname "$KERNEL_DIR")/vendor/oplus/kernel/oplus_performance/klockopt/Kconfig"
 
+      - name: Cache Android Clang
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/clang
+          key: android-clang-r383902-v1
+
       - name: Download matching Android Clang
         shell: bash
         run: |
           set -euxo pipefail
-          mkdir -p "$RUNNER_TEMP/clang"
-          curl -fL "$CLANG_URL" | tar -xz -C "$RUNNER_TEMP/clang"
+          if [ ! -x "$RUNNER_TEMP/clang/bin/clang" ]; then
+            mkdir -p "$RUNNER_TEMP/clang"
+            curl -fL "$CLANG_URL" | tar -xz -C "$RUNNER_TEMP/clang"
+          fi
           test -x "$RUNNER_TEMP/clang/bin/clang"
           "$RUNNER_TEMP/clang/bin/clang" --version
 
@@ -81,11 +89,12 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          cp "$GITHUB_WORKSPACE/kernel/config/pftm10-c39.config" "$KERNEL_DIR/.config"
           cd "$KERNEL_DIR"
-          ./scripts/config --file .config --set-str LOCALVERSION "+"
-          ./scripts/config --file .config -d MODULE_SIG_FORCE
-          ./scripts/config --file .config -d MODULE_SIG_ALL
+          mkdir -p out
+          cp "$GITHUB_WORKSPACE/kernel/config/pftm10-c39.config" out/.config
+          ./scripts/config --file out/.config --set-str LOCALVERSION "+"
+          ./scripts/config --file out/.config -d MODULE_SIG_FORCE
+          ./scripts/config --file out/.config -d MODULE_SIG_ALL
           export PATH="$RUNNER_TEMP/clang/bin:$PATH"
           make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 \
             CROSS_COMPILE=aarch64-linux-gnu- \
