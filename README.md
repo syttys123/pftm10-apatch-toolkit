@@ -26,6 +26,7 @@ GitHub identity `syttys123`.
 
 ```text
 docs/                         Reproducible workflow and recovery notes
+kernel/                       Pinned MT6833 kernel cloud-build inputs
 kpms/pftm10-kprobe/           Bounded KPM with charger recovery and PD-gated 3A
 modules/pftm10-control/       Minimal APatch system module
 tools/                        Build, install, and privacy-validation helpers
@@ -52,6 +53,17 @@ $env:PFTM10_KERNELPATCH_ROOT = "E:\src\KernelPatch"
 The documented Windows toolchain uses Zig `0.14.1` with the
 `aarch64-freestanding` target. Do not publish build outputs containing debug
 paths.
+
+## Build the Matching Kernel
+
+The `kernel-build` GitHub Actions workflow compiles the public OPPO MT6833
+kernel with the live device configuration and the matching Android Clang
+r383902 toolchain. It publishes `Image.gz`, `System.map`, kernel config,
+`mt6833.dtb`, and `oplus6833_21101.dtb` as release assets.
+
+The workflow never flashes a device or uploads a boot/vendor image. See
+[kernel/README.md](kernel/README.md) for pinned inputs, module-signature
+compatibility, outputs, and the pre-flash acceptance gate.
 
 Build and verify all release assets:
 

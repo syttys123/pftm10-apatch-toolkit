@@ -1,0 +1,153 @@
+name: kernel-build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/kernel-build.yml
+      - kernel/**
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kernel-build-main
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    env:
+      KERNEL_REPO: https://github.com/oppo-source/android_kernel_oppo_mt6833.git
+      KERNEL_BRANCH: oppo/mt6833_t_13.0
+      KERNEL_COMMIT: 1d9fa359f26e7b7c5e5a2ef7041f7569ec68aaf0
+      CLANG_URL: https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/android11-release/clang-r383902.tar.gz
+      KERNEL_DIR: ${{ github.workspace }}/work/kernel
+
+    steps:
+      - name: Check out toolkit
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y \
+            bc bison build-essential ccache curl flex libelf-dev \
+            libssl-dev lz4 python3 rsync xz-utils zstd
+
+      - name: Fetch pinned OPPO kernel source
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p "$(dirname "$KERNEL_DIR")"
+          git init "$KERNEL_DIR"
+          git -C "$KERNEL_DIR" remote add origin "$KERNEL_REPO"
+          git -C "$KERNEL_DIR" fetch --depth=1 origin "$KERNEL_BRANCH"
+          git -C "$KERNEL_DIR" checkout --detach FETCH_HEAD
+          test "$(git -C "$KERNEL_DIR" rev-parse HEAD)" = "$KERNEL_COMMIT"
+
+      - name: Download matching Android Clang
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p "$RUNNER_TEMP/clang"
+          curl -fL "$CLANG_URL" | tar -xz -C "$RUNNER_TEMP/clang"
+          test -x "$RUNNER_TEMP/clang/bin/clang"
+          "$RUNNER_TEMP/clang/bin/clang" --version
+
+      - name: Configure kernel from device baseline
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cp "$GITHUB_WORKSPACE/kernel/config/pftm10-c39.config" "$KERNEL_DIR/.config"
+          cd "$KERNEL_DIR"
+          ./scripts/config --file .config --set-str LOCALVERSION "+"
+          ./scripts/config --file .config -d MODULE_SIG_FORCE
+          ./scripts/config --file .config -d MODULE_SIG_ALL
+          export PATH="$RUNNER_TEMP/clang/bin:$PATH"
+          make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            HOSTCC=clang HOSTLD=ld.lld olddefconfig
+          grep -E '^CONFIG_LOCALVERSION=|^CONFIG_MODULE_SIG_FORCE=|^CONFIG_MODVERSIONS=' out/.config
+
+      - name: Build kernel image and board DTBs
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cd "$KERNEL_DIR"
+          export PATH="$RUNNER_TEMP/clang/bin:$PATH"
+          MAKE_ARGS=(
+            O=out ARCH=arm64 LLVM=1 LLVM_IAS=1
+            CROSS_COMPILE=aarch64-linux-gnu-
+            HOSTCC=clang HOSTLD=ld.lld
+          )
+          make "${MAKE_ARGS[@]}" -j"$(nproc)" Image.gz
+          make "${MAKE_ARGS[@]}" -j"$(nproc)" dtbs
+          make "${MAKE_ARGS[@]}" kernelrelease | tee out/kernelrelease.txt
+          test "$(cat out/kernelrelease.txt)" = "4.19.191+"
+
+      - name: Collect build evidence
+        shell: bash
+        run: |
+          set -euxo pipefail
+          OUT="$GITHUB_WORKSPACE/build-output"
+          mkdir -p "$OUT/dtb"
+          cp "$KERNEL_DIR/out/arch/arm64/boot/Image.gz" "$OUT/"
+          cp "$KERNEL_DIR/out/System.map" "$OUT/"
+          cp "$KERNEL_DIR/out/.config" "$OUT/kernel.config"
+          cp "$KERNEL_DIR/out/kernelrelease.txt" "$OUT/"
+          cp "$KERNEL_DIR/out/arch/arm64/boot/dts/mediatek/mt6833.dtb" "$OUT/dtb/"
+          cp "$KERNEL_DIR/out/arch/arm64/boot/dts/mediatek/oplus6833_21101.dtb" "$OUT/dtb/"
+          {
+            echo "source_repo=$KERNEL_REPO"
+            echo "source_branch=$KERNEL_BRANCH"
+            echo "source_commit=$KERNEL_COMMIT"
+            echo "clang_url=$CLANG_URL"
+            echo "kernelrelease=$(cat "$OUT/kernelrelease.txt")"
+            echo "config_sha256=$(sha256sum "$OUT/kernel.config" | cut -d' ' -f1)"
+            echo "image_sha256=$(sha256sum "$OUT/Image.gz" | cut -d' ' -f1)"
+            echo "run_id=${GITHUB_RUN_ID}"
+          } > "$OUT/BUILD-INFO.txt"
+          (
+            cd "$OUT"
+            find . -type f ! -name SHA256SUMS -print0 |
+              sort -z |
+              xargs -0 sha256sum > SHA256SUMS
+            tar -czf "$GITHUB_WORKSPACE/kernel-build-${GITHUB_RUN_ID}.tar.gz" .
+          )
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-build-${{ github.run_id }}
+          path: |
+            build-output/
+            kernel-build-${{ github.run_id }}.tar.gz
+          if-no-files-found: error
+
+      - name: Publish build release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: kernel-build-${{ github.run_id }}
+          name: Kernel build ${{ github.run_id }}
+          body: |
+            Automated build from pinned OPPO source.
+
+            - Source commit: `${{ env.KERNEL_COMMIT }}`
+            - Expected kernel release: `4.19.191+`
+            - Module signing force: disabled for compatibility testing
+            - No device images or personal data are included
+          files: |
+            build-output/Image.gz
+            build-output/System.map
+            build-output/kernel.config
+            build-output/kernelrelease.txt
+            build-output/dtb/mt6833.dtb
+            build-output/dtb/oplus6833_21101.dtb
+            build-output/BUILD-INFO.txt
+            build-output/SHA256SUMS
+            kernel-build-${{ github.run_id }}.tar.gz
