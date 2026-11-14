@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.3.1 - 2026-11-14
+
+- bump `pftm10-control` to 1.2.0 with a reversible bind-mount mask for the
+  CR.39 battery restriction plugin
+- prevent the `google_check` crash loop on builds without GMS while keeping
+  the main battery service and charging telemetry active
+- add `pftm10ctl battery-restrict status|mask|restore` and boot-time status
+  logging
+
 ## v1.3.0 - 2026-11-14
 
 - add a root-only static adapter for direct manager-authorized

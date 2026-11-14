@@ -14,6 +14,8 @@ Files:
 - `bin/pftm10-kpmctl`: static root-only adapter that drops to the APatch
   manager UID and calls `pftm10-kprobe` control0 through the KernelPatch
   supercall ABI.
+- `post-fs-data.sh`: optionally masks the known CR.39
+  `BatteryRestrictPlugin.apk` that crashes when GMS is absent.
 - `uninstall.sh`: removes `/data/adb/pftm10-control`.
 
 The module does not write Android partitions, boot images, vbmeta, SELinux
@@ -32,6 +34,9 @@ pftm10ctl kprobe
 pftm10ctl kprobe-ctl <control-args>
 pftm10ctl kpm-info
 pftm10ctl kpm-list
+pftm10ctl battery-restrict status
+pftm10ctl battery-restrict mask
+pftm10ctl battery-restrict restore
 pftm10ctl root
 pftm10ctl bootlog
 pftm10ctl kpm
@@ -45,5 +50,12 @@ the kernel `dmesg` ring retaining the original boot message.
 
 `kprobe-ctl` is fixed to `pftm10-kprobe`; it cannot load, unload, or select a
 different KPM. The current KPM control0 surface is bounded and read-only.
+
+`battery-restrict mask` bind-mounts a zero-length file over
+`BatteryRestrictPlugin.apk`. This prevents the plugin's `google_check` worker
+from calling `getApplicationEnabledSetting("com.google.android.gms")` on ROMs
+where GMS is not installed. The rest of `com.oplus.battery` stays active.
+`restore` unmounts the override immediately. The mask is applied during
+`post-fs-data` and does not modify an Android partition.
 
 Host-side acceptance can be run with `tools/check-device.ps1`.

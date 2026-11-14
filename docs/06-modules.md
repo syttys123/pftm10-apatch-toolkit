@@ -27,8 +27,29 @@ Host-side read-only acceptance:
 ```
 
 The check requires the applied module version and verifies `health=ok`,
-`capabilities=ok`, KPM `1.1.1`, and the `post-fs-data` load event. It prints no
-device serial or ADB identity.
+`capabilities=ok`, KPM `1.1.1`, the `post-fs-data` load event, and that the
+CR.39 battery restrict crash mask is active. It prints no device serial or ADB
+identity.
+
+### Battery Restrict Compatibility Mask
+
+Some CR.39 builds ship `BatteryRestrictPlugin.apk` without the corresponding
+GMS package. Its `google_check` worker calls the package manager for
+`com.google.android.gms` and raises `IllegalArgumentException: Unknown
+package`, repeatedly terminating the shared `com.oplus.battery` process during
+boot.
+
+The control module masks only that plugin file with a zero-length bind mount:
+
+```sh
+su -c "/data/adb/modules/pftm10-control/bin/pftm10ctl battery-restrict status"
+su -c "/data/adb/modules/pftm10-control/bin/pftm10ctl battery-restrict mask"
+su -c "/data/adb/modules/pftm10-control/bin/pftm10ctl battery-restrict restore"
+```
+
+`mask` is applied from `post-fs-data`. `restore` removes the runtime override
+without writing an Android partition. The battery service continues to expose
+charging voltage, current, temperature, and health telemetry.
 
 ## KernelPatch KPMs
 

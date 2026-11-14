@@ -2,9 +2,11 @@
 
 STATE=/data/adb/pftm10-control
 LOG="$STATE/boot.log"
+BATTERY_RESTRICT_APK=/my_bigball/plugin/BatteryRestrictPlugin/BatteryRestrictPlugin.apk
+BATTERY_RESTRICT_MASK="$STATE/battery-restrict-disabled.apk"
 
 usage() {
-    echo "usage: pftm10ctl {status|caps|health|preload|kprobe|kprobe-ctl|kpm-info|kpm-list|root|bootlog|kpm|enforcing|permissive}"
+    echo "usage: pftm10ctl {status|caps|health|preload|kprobe|kprobe-ctl|kpm-info|kpm-list|battery-restrict|root|bootlog|kpm|enforcing|permissive}"
 }
 
 if [ "$(id -u)" != "0" ]; then
@@ -135,6 +137,72 @@ kpm_list_status() {
     su "$manager" -c '/system/bin/truncate su module list'
 }
 
+battery_restrict_is_mounted() {
+    mount | grep -F " on $BATTERY_RESTRICT_APK " >/dev/null 2>&1
+}
+
+battery_restrict_status() {
+    if [ ! -f "$BATTERY_RESTRICT_APK" ]; then
+        echo "battery_restrict=missing"
+        return 1
+    fi
+
+    size=$(stat -c %s "$BATTERY_RESTRICT_APK" 2>/dev/null)
+    if battery_restrict_is_mounted && [ "$size" = "0" ]; then
+        echo "battery_restrict=masked"
+        echo "battery_restrict_mount=bind"
+        echo "battery_restrict_size=0"
+        return 0
+    fi
+
+    echo "battery_restrict=active"
+    echo "battery_restrict_mount=none"
+    echo "battery_restrict_size=${size:-unknown}"
+    return 0
+}
+
+battery_restrict_mask() {
+    if [ ! -f "$BATTERY_RESTRICT_APK" ]; then
+        echo "battery_restrict=mask_failed"
+        echo "battery_restrict_reason=plugin_missing"
+        return 1
+    fi
+
+    if battery_restrict_is_mounted; then
+        battery_restrict_status
+        return $?
+    fi
+
+    mkdir -p "$STATE"
+    : > "$BATTERY_RESTRICT_MASK"
+    chmod 0444 "$BATTERY_RESTRICT_MASK"
+
+    if ! mount --bind "$BATTERY_RESTRICT_MASK" "$BATTERY_RESTRICT_APK"; then
+        echo "battery_restrict=mask_failed"
+        echo "battery_restrict_reason=bind_failed"
+        return 1
+    fi
+
+    battery_restrict_status
+}
+
+battery_restrict_restore() {
+    if [ ! -f "$BATTERY_RESTRICT_APK" ]; then
+        echo "battery_restrict=missing"
+        return 1
+    fi
+
+    if battery_restrict_is_mounted; then
+        if ! umount "$BATTERY_RESTRICT_APK"; then
+            echo "battery_restrict=restore_failed"
+            echo "battery_restrict_reason=umount_failed"
+            return 1
+        fi
+    fi
+
+    battery_restrict_status
+}
+
 caps_status() {
     rc=0
     echo "root_uid=$(id -u)"
@@ -150,6 +218,7 @@ caps_status() {
     [ "$(getprop ro.pftm10.control)" = "active" ] || rc=1
     preload_status || rc=1
     kprobe_status || rc=1
+    battery_restrict_status || true
 
     if [ "$rc" -eq 0 ]; then
         echo "capabilities=ok"
@@ -234,6 +303,26 @@ case "$1" in
     kpm-list)
         kpm_list_status
         exit $?
+        ;;
+    battery-restrict)
+        case "$2" in
+            status)
+                battery_restrict_status
+                exit $?
+                ;;
+            mask|disable)
+                battery_restrict_mask
+                exit $?
+                ;;
+            restore|enable)
+                battery_restrict_restore
+                exit $?
+                ;;
+            *)
+                echo "usage: pftm10ctl battery-restrict {status|mask|restore}" >&2
+                exit 2
+                ;;
+        esac
         ;;
     root)
         id

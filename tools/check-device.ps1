@@ -42,7 +42,7 @@ $module = $modules | Where-Object { $_.id -eq 'pftm10-control' } | Select-Object
 if (-not $module) {
     throw "pftm10-control is not installed"
 }
-if ($module.version -ne '1.1.0' -or $module.versionCode -ne '6') {
+if ($module.version -ne '1.2.0' -or $module.versionCode -ne '7') {
     throw "Unexpected pftm10-control version"
 }
 if ($module.enabled -ne 'true' -or $module.update -ne 'false') {
@@ -71,6 +71,9 @@ if ($caps -notmatch '(?m)^kprobe_event=post-fs-data$') {
 if ($caps -notmatch '(?m)^kprobe_control=ok$') {
     throw "KPM control0 check failed"
 }
+if ($caps -notmatch '(?m)^battery_restrict=masked$') {
+    throw "Battery restrict crash mask is not active"
+}
 
 $controlHelp = (
     & $Adb -s $Device shell "su -c '/data/adb/modules/pftm10-control/bin/pftm10ctl kprobe-ctl help'" 2>&1
@@ -80,7 +83,7 @@ if ($controlHelp -notmatch 'commands: info \| banner \| cmdline') {
 }
 
 Write-Output (
-    "DEVICE_CHECK_OK module={0} versionCode={1} health=ok capabilities=ok kpm=1.1.1 control=ok event=post-fs-data" -f
+    "DEVICE_CHECK_OK module={0} versionCode={1} health=ok capabilities=ok kpm=1.1.1 control=ok battery_restrict=masked event=post-fs-data" -f
         $module.version,
         $module.versionCode
 )

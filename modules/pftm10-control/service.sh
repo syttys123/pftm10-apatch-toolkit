@@ -26,5 +26,7 @@ done
 
 "$MODDIR/bin/pftm10ctl" health >> "$LOG" 2>&1
 echo "health_rc=$?" >> "$LOG"
+"$MODDIR/bin/pftm10ctl" battery-restrict status >> "$LOG" 2>&1
+echo "battery_restrict_status_rc=$?" >> "$LOG"
 
 chmod 0600 "$LOG"
