@@ -27,6 +27,7 @@ jobs:
       MODULE_BRANCH: oppo/mt6833_t_13.0
       MODULE_COMMIT: a9ed2381b546fe472a4bdb5c8a0d874abc1ad968
       CLANG_URL: https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/android11-release/clang-r383902.tar.gz
+      TARGET_PRODUCT: k6833v1_64_k419
       KERNEL_DIR: ${{ github.workspace }}/work/kernel
       MODULE_DIR: ${{ github.workspace }}/work/modules
 
