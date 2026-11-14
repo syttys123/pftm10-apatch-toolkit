@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.3.2 - 2026-11-14
+
+- bump `pftm10-control` to 1.2.1
+- replay camera location AppOps denial after every boot while leaving the
+  runtime permission granted for OPPO camera compatibility
+- persist OShare background-location denial with `user-fixed` and `user-set`
+- extend host device acceptance to verify both privacy policies
+
 ## v1.3.1 - 2026-11-14
 
 - bump `pftm10-control` to 1.2.0 with a reversible bind-mount mask for the

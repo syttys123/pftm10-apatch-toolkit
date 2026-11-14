@@ -20,6 +20,24 @@ Use `-g0` and inspect the final ELF:
 - no device identifier strings
 - metadata author `syttys123`
 
+## Boot Privacy Policy
+
+The `pftm10-control` service stage reapplies privacy state that Android or
+vendor defaults can reset during boot:
+
+- camera fine and coarse location AppOps are `ignore`
+- OShare background location is revoked with `user-fixed` and `user-set`
+
+Do not revoke the camera runtime location permission directly: the OPPO camera
+app treats that state as a blocking prerequisite dialog and does not reach the
+camera preview until its own prompt is dismissed. AppOps denial keeps the app
+compatible while preventing access to location data.
+
+The boot replay is controlled by
+`/data/adb/pftm10-control/privacy.disabled`. Presence of that file disables the
+policy and restores the default location grants on the next boot; removal
+enables the policy again.
+
 ## Pre-Push Check
 
 ```powershell

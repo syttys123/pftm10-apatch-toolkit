@@ -16,6 +16,8 @@ Files:
   supercall ABI.
 - `post-fs-data.sh`: optionally masks the known CR.39
   `BatteryRestrictPlugin.apk` that crashes when GMS is absent.
+- `service.sh`: after `sys.boot_completed`, reapplies the camera location
+  AppOps denial and fixes the OShare background-location permission as denied.
 - `uninstall.sh`: removes `/data/adb/pftm10-control`.
 
 The module does not write Android partitions, boot images, vbmeta, SELinux
@@ -57,5 +59,35 @@ from calling `getApplicationEnabledSetting("com.google.android.gms")` on ROMs
 where GMS is not installed. The rest of `com.oplus.battery` stays active.
 `restore` unmounts the override immediately. The mask is applied during
 `post-fs-data` and does not modify an Android partition.
+
+## Privacy Policy Replay
+
+The OPPO camera app treats missing location permission as a startup prerequisite
+and shows its own blocking dialog. Revoking the runtime permission directly is
+therefore not usable. The module keeps the runtime permission granted for app
+compatibility but replays these AppOps after every boot:
+
+```text
+com.oplus.camera FINE_LOCATION   ignore
+com.oplus.camera COARSE_LOCATION ignore
+```
+
+The camera UI opens normally and camera device 0 remains available, while
+location access is denied by AppOps. For OShare, background location is
+revoked and marked `user-fixed` and `user-set` after boot. Foreground location
+remains available for nearby sharing.
+
+`service.sh` records all four return codes and `privacy_policy_rc` in
+`/data/adb/pftm10-control/boot.log`.
+
+To disable the replay without uninstalling the module:
+
+```sh
+su -c "touch /data/adb/pftm10-control/privacy.disabled"
+```
+
+Reboot afterward; the service restores the camera location AppOps to `allow`
+and grants OShare background location again. Remove the file and reboot to
+re-enable the privacy policy.
 
 Host-side acceptance can be run with `tools/check-device.ps1`.

@@ -28,8 +28,26 @@ Host-side read-only acceptance:
 
 The check requires the applied module version and verifies `health=ok`,
 `capabilities=ok`, KPM `1.1.1`, the `post-fs-data` load event, and that the
-CR.39 battery restrict crash mask is active. It prints no device serial or ADB
-identity.
+CR.39 battery restrict crash mask and privacy policy are active. It prints no
+device serial or ADB identity.
+
+`pftm10-control` 1.2.1 adds boot-time privacy replay:
+
+```text
+com.oplus.camera FINE_LOCATION   ignore
+com.oplus.camera COARSE_LOCATION ignore
+com.coloros.oshare ACCESS_BACKGROUND_LOCATION denied + USER_FIXED
+```
+
+The camera runtime permission remains granted because the OPPO camera UI treats
+missing location permission as a blocking startup dialog. AppOps still denies
+the actual location operations. OShare keeps foreground location for nearby
+sharing while background location is denied.
+
+Create `/data/adb/pftm10-control/privacy.disabled` and reboot to skip the
+replay without uninstalling the module. In that mode the service restores the
+camera location AppOps to `allow` and grants OShare background location.
+Remove that file and reboot to enable the privacy policy again.
 
 ### Battery Restrict Compatibility Mask
 
