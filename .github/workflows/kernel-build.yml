@@ -54,6 +54,10 @@ jobs:
           git -C "$KERNEL_DIR" fetch --depth=1 origin "$KERNEL_BRANCH"
           git -C "$KERNEL_DIR" checkout --detach FETCH_HEAD
           test "$(git -C "$KERNEL_DIR" rev-parse HEAD)" = "$KERNEL_COMMIT"
+          # OPPO charger headers use an Android-tree-relative include that
+          # expects drivers/kernel-4.19 to resolve back to the kernel root.
+          test ! -e "$KERNEL_DIR/drivers/kernel-4.19"
+          ln -s .. "$KERNEL_DIR/drivers/kernel-4.19"
 
       - name: Fetch pinned OPPO vendor modules
         shell: bash
