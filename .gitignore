@@ -1,0 +1,14 @@
+.env
+private/
+artifacts/
+dist/
+*.apk
+*.bin
+*.img
+*.kpm
+*.log
+*.o
+*.zip
+*.sha256
+.DS_Store
+Thumbs.db

@@ -1,0 +1,64 @@
+# PFTM10 APatch Toolkit
+
+Maintainer: [syttys123](https://github.com/syttys123)
+
+This repository documents and automates a from-scratch, local-only workflow for
+the OPPO PFTM10 / OP526D on the MediaTek MT6833 platform:
+
+- bootloader unlock and recovery on the MT6833 boot chain
+- APatch / KernelPatch root with reproducible verification checkpoints
+- APatch system modules with boot-stage hooks
+- KernelPatch KPM examples and a read-only kernel probe
+- physical image de-bloat and rollback planning
+- public-tree privacy checks
+
+The repository intentionally does not contain vendor firmware, boot images,
+preloader images, DA binaries, user data, device serial numbers, ADB state
+dumps, private logs, or local assistant workspace records. Supply your own matching
+firmware and backups.
+
+## Public Attribution
+
+All project metadata, commits, module metadata, and KPM metadata use the
+GitHub identity `syttys123`.
+
+## Repository Layout
+
+```text
+docs/                         Reproducible workflow and recovery notes
+kpms/pftm10-kprobe/           Read-only KernelPatch module and builder
+modules/pftm10-control/       Minimal APatch system module
+tools/                        Build, install, and privacy-validation helpers
+```
+
+## Start Here
+
+1. Read [docs/00-principles.md](docs/00-principles.md).
+2. Record a complete stock rollback before changing any critical partition.
+3. Follow [docs/01-recon.md](docs/01-recon.md) and stop if the live state does
+   not match the firmware package.
+4. Use the recovery and verification checkpoints in every later document.
+
+## Build the Examples
+
+Set the KernelPatch source tree outside this repository:
+
+```powershell
+$env:PFTM10_KERNELPATCH_ROOT = "E:\src\KernelPatch"
+.\kpms\pftm10-kprobe\build.ps1
+.\modules\build-pftm10-control.ps1
+```
+
+The documented Windows toolchain uses Zig `0.14.1` with the
+`aarch64-freestanding` target. Do not publish build outputs containing debug
+paths.
+
+## Scope
+
+This is an experimental device-modification toolkit. It is not a generic OPPO,
+MediaTek, or anti-theft bypass guide. Use only on hardware you own and can
+recover over USB.
+
+## License
+
+GPL-2.0-or-later. See [LICENSE](LICENSE).

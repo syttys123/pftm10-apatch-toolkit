@@ -1,0 +1,44 @@
+#!/system/bin/sh
+
+STATE=/data/adb/pftm10-control
+LOG="$STATE/boot.log"
+
+usage() {
+    echo "usage: pftm10ctl {status|bootlog|kpm|enforcing|permissive}"
+}
+
+if [ "$(id -u)" != "0" ]; then
+    echo "pftm10ctl requires root" >&2
+    exit 1
+fi
+
+case "$1" in
+    status)
+        echo "build=$(getprop ro.build.display.id)"
+        echo "boot_completed=$(getprop sys.boot_completed)"
+        echo "locked=$(getprop ro.boot.flash.locked)"
+        echo "verified=$(getprop ro.boot.verifiedbootstate)"
+        echo "selinux=$(getenforce 2>&1)"
+        echo "control_prop=$(getprop ro.pftm10.control)"
+        echo "apd=$(/data/adb/apd -V 2>&1)"
+        echo "kernel=$(uname -r)"
+        ;;
+    bootlog)
+        tail -n 40 "$LOG" 2>/dev/null
+        ;;
+    kpm)
+        dmesg | grep -i "kpm hello" | tail -n 20
+        ;;
+    enforcing)
+        setenforce 1
+        getenforce
+        ;;
+    permissive)
+        setenforce 0
+        getenforce
+        ;;
+    *)
+        usage
+        exit 2
+        ;;
+esac
