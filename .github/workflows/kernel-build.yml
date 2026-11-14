@@ -54,6 +54,8 @@ jobs:
           git -C "$KERNEL_DIR" fetch --depth=1 origin "$KERNEL_BRANCH"
           git -C "$KERNEL_DIR" checkout --detach FETCH_HEAD
           test "$(git -C "$KERNEL_DIR" rev-parse HEAD)" = "$KERNEL_COMMIT"
+          # Keep the out-of-tree build directory invisible to setlocalversion.
+          printf '\nout/\n' >> "$KERNEL_DIR/.git/info/exclude"
 
       - name: Fetch pinned OPPO vendor modules
         shell: bash
@@ -119,7 +121,7 @@ jobs:
             HOSTCC=clang HOSTLD=ld.lld
           )
           make "${MAKE_ARGS[@]}" -j"$(nproc)" Image.gz
-          make "${MAKE_ARGS[@]}" kernelrelease | tee out/kernelrelease.txt
+          make "${MAKE_ARGS[@]}" -s kernelrelease | tail -n1 > out/kernelrelease.txt
           test "$(cat out/kernelrelease.txt)" = "4.19.191+"
 
       - name: Collect build evidence
