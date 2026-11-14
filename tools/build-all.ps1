@@ -20,7 +20,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "Public tree validation failed"
 }
 
-& (Join-Path $repoRoot 'modules\build-pftm10-control.ps1') -OutputDirectory $outputRoot
+& (Join-Path $repoRoot 'modules\build-pftm10-control.ps1') -Zig $Zig -OutputDirectory $outputRoot
 if ($LASTEXITCODE -ne 0) {
     throw "System module build failed"
 }
@@ -61,7 +61,7 @@ $artifacts = Get-ChildItem -LiteralPath $outputRoot -File |
     }
 
 $manifest = [ordered]@{
-    release = 'v1.2.1'
+    release = 'v1.3.0'
     builder = 'syttys123'
     artifacts = $artifacts
 }

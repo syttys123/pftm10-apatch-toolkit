@@ -5,6 +5,7 @@ STATE=/data/adb/pftm10-control
 LOG="$STATE/boot.log"
 
 mkdir -p "$STATE"
+chmod 0755 "$MODDIR/bin/pftm10ctl" "$MODDIR/bin/pftm10-kpmctl" 2>/dev/null
 
 i=0
 while [ "$(getprop sys.boot_completed)" != "1" ] && [ "$i" -lt 60 ]; do

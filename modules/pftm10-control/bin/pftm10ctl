@@ -4,7 +4,7 @@ STATE=/data/adb/pftm10-control
 LOG="$STATE/boot.log"
 
 usage() {
-    echo "usage: pftm10ctl {status|caps|health|preload|kprobe|kpm-info|kpm-list|root|bootlog|kpm|enforcing|permissive}"
+    echo "usage: pftm10ctl {status|caps|health|preload|kprobe|kprobe-ctl|kpm-info|kpm-list|root|bootlog|kpm|enforcing|permissive}"
 }
 
 if [ "$(id -u)" != "0" ]; then
@@ -61,6 +61,7 @@ kprobe_status() {
         echo "kprobe_version=${kprobe_version:-unknown}"
         echo "kprobe_event=${kprobe_event:-unknown}"
         echo "kprobe_source=manager-supercmd"
+        kprobe_control_status || return 1
     else
         echo "kprobe_load=unknown"
         return 1
@@ -101,6 +102,28 @@ kpm_info_status() {
 
     echo "kprobe_manager_uid=$KPM_MANAGER_UID"
     return 0
+}
+
+kprobe_control_status() {
+    helper="${0%/*}/pftm10-kpmctl"
+    if [ ! -x "$helper" ]; then
+        echo "kprobe_control=missing"
+        return 1
+    fi
+
+    if ! kprobe_control_output=$("$helper" info 2>/dev/null); then
+        echo "kprobe_control=failed"
+        return 1
+    fi
+
+    if printf '%s\n' "$kprobe_control_output" | grep -q 'kpver=d09'; then
+        echo "kprobe_control=ok"
+        echo "kprobe_control_source=manager-supercall"
+        return 0
+    fi
+
+    echo "kprobe_control=invalid"
+    return 1
 }
 
 kpm_list_status() {
@@ -195,6 +218,10 @@ case "$1" in
     kprobe)
         kprobe_status
         exit $?
+        ;;
+    kprobe-ctl)
+        shift
+        exec "${0%/*}/pftm10-kpmctl" "$@"
         ;;
     kpm-info)
         kpm_info_status

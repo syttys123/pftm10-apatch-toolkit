@@ -5,7 +5,7 @@ STATE=/data/adb/pftm10-control
 LOG="$STATE/boot.log"
 
 mkdir -p "$STATE"
-chmod 0755 "$MODDIR/bin/pftm10ctl" 2>/dev/null
+chmod 0755 "$MODDIR/bin/pftm10ctl" "$MODDIR/bin/pftm10-kpmctl" 2>/dev/null
 
 {
     echo "---"

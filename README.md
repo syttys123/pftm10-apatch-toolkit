@@ -46,7 +46,7 @@ Set the KernelPatch source tree outside this repository:
 ```powershell
 $env:PFTM10_KERNELPATCH_ROOT = "E:\src\KernelPatch"
 .\kpms\pftm10-kprobe\build.ps1
-.\modules\build-pftm10-control.ps1
+.\modules\build-pftm10-control.ps1 -Zig C:\tools\zig.exe
 ```
 
 The documented Windows toolchain uses Zig `0.14.1` with the

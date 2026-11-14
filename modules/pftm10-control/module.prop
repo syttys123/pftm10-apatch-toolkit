@@ -1,6 +1,6 @@
 id=pftm10-control
 name=PFTM10 Control Module
-version=1.0.4
-versionCode=5
+version=1.1.0
+versionCode=6
 author=syttys123
-description=Local APatch control matrix with manager-authorized KPM verification, bounded health checks, and rollback-safe diagnostics for PFTM10.
+description=Local APatch control matrix with manager-authorized KPM verification and direct bounded KPM control0 access for PFTM10.

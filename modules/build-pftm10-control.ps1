@@ -1,5 +1,7 @@
 [CmdletBinding()]
 param(
+    [Parameter(Mandatory = $true)]
+    [string]$Zig,
     [string]$OutputDirectory = (Join-Path $PSScriptRoot 'dist')
 )
 
@@ -33,6 +35,13 @@ Get-ChildItem -LiteralPath $moduleSource -Recurse -File | ForEach-Object {
     $destinationDirectory = Split-Path -Parent $destination
     New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
     Copy-Item -LiteralPath $_.FullName -Destination $destination -Force
+}
+
+& (Join-Path $PSScriptRoot 'build-pftm10-kpmctl.ps1') `
+    -Zig $Zig `
+    -OutputPath (Join-Path $stage 'bin\pftm10-kpmctl')
+if ($LASTEXITCODE -ne 0) {
+    throw "KPM control helper build failed"
 }
 
 if (Test-Path -LiteralPath $zipPath) {

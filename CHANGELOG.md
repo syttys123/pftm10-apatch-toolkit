@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.3.0 - 2026-11-14
+
+- add a root-only static adapter for direct manager-authorized
+  `pftm10-kprobe` control0 calls
+- add `pftm10ctl kprobe-ctl` and include control0 reachability in health and
+  device acceptance
+
 ## v1.2.1 - 2026-11-14
 
 - add manager-authorized KPM load verification and a read-only capability

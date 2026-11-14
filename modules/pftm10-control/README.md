@@ -11,6 +11,9 @@ Files:
 - `bin/pftm10ctl`: root-only capability matrix, health, preload, manager
   supercommand, KPM integrity/load verification, root context, boot-log, KPM
   logs, and SELinux mode helper.
+- `bin/pftm10-kpmctl`: static root-only adapter that drops to the APatch
+  manager UID and calls `pftm10-kprobe` control0 through the KernelPatch
+  supercall ABI.
 - `uninstall.sh`: removes `/data/adb/pftm10-control`.
 
 The module does not write Android partitions, boot images, vbmeta, SELinux
@@ -26,6 +29,7 @@ pftm10ctl caps
 pftm10ctl health
 pftm10ctl preload
 pftm10ctl kprobe
+pftm10ctl kprobe-ctl <control-args>
 pftm10ctl kpm-info
 pftm10ctl kpm-list
 pftm10ctl root
@@ -38,5 +42,8 @@ pftm10ctl permissive
 `health` and `caps` verify `pftm10-kprobe` through the APatch manager UID and
 the read-only KernelPatch `module info` supercommand. This does not depend on
 the kernel `dmesg` ring retaining the original boot message.
+
+`kprobe-ctl` is fixed to `pftm10-kprobe`; it cannot load, unload, or select a
+different KPM. The current KPM control0 surface is bounded and read-only.
 
 Host-side acceptance can be run with `tools/check-device.ps1`.

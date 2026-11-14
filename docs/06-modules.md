@@ -60,6 +60,19 @@ The result includes `version=1.1.1`, `load_event=post-fs-data`, and
 `load_source=file`. `pftm10ctl health` and `pftm10ctl caps` use this check
 because `dmesg` may rotate the original load message out of the ring.
 
+`pftm10-control` also ships a static root-only adapter for direct KPM control0
+access:
+
+```sh
+pftm10ctl kprobe-ctl info
+pftm10ctl kprobe-ctl help
+pftm10ctl kprobe-ctl banner
+```
+
+The adapter fixes the KPM name to `pftm10-kprobe`, drops to the APatch manager
+UID, and invokes only `SUPERCALL_KPM_CONTROL`. It cannot load, unload, or choose
+another KPM. The KPM control0 commands remain bounded and read-only.
+
 Boot-log context only:
 
 ```sh

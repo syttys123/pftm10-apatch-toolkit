@@ -28,7 +28,7 @@ git status --short
 Create a tag only after the commit is pushed:
 
 ```text
-v1.2.1
+v1.3.0
 ```
 
 Attach only sanitized build outputs. Do not attach firmware, partition images,
