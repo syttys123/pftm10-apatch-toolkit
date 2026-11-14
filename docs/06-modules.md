@@ -27,9 +27,39 @@ Host-side read-only acceptance:
 ```
 
 The check requires the applied module version and verifies `health=ok`,
-`capabilities=ok`, KPM `1.1.1`, the `post-fs-data` load event, and that the
-CR.39 battery restrict crash mask and privacy policy are active. It prints no
-device serial or ADB identity.
+`capabilities=ok`, KPM `1.3.0`, the `post-fs-data` load event, boot-time
+charger suspend recovery, the gated 3A control surface, the CR.39 battery
+restrict crash mask, and the privacy policy. It prints no device serial or ADB
+identity.
+
+`pftm10-control` 1.4.0 calls the official
+`oplus_chg_unsuspend_charger()` kernel function after `sys.boot_completed`.
+This clears the hidden standard-host suspend state that can leave MT6360 at
+`IBUS=0 / IBAT=0 / CHG_STATUS=ready` despite `CHG_EN=1`. The return value is
+recorded as `charger_unsuspend_rc` and `charger_unsuspend` in
+`/data/adb/pftm10-control/boot.log`.
+
+The optional 3A policy is armed with:
+
+```sh
+su -c "/data/adb/modules/pftm10-control/bin/pftm10ctl charge-3a enable"
+```
+
+The KPM first queries `type_c_port0` through `tcpm_inquire_pd_contract()` and
+only writes MT6360 AICR when the live contract is `5V/3000mA` or higher. OPPO
+policy periodically rewrites the limit back to 500mA, so an armed boot starts
+a watchdog that reapplies the gated 3A request every five seconds. If the PD
+contract changes or the cable moves to a non-PD host, the KPM refuses the
+write. Disarm and restore 500mA with:
+
+```sh
+su -c "/data/adb/modules/pftm10-control/bin/pftm10ctl charge-3a disable"
+```
+
+`charge-3a status` reports the armed state, watchdog state, live PD contract,
+and `input_current_settled`. The 3A value is an input-current ceiling, not a
+claim that the battery always accepts 3A; IBAT continues to follow OPPO
+CC/CV, temperature, and fuel-gauge policy.
 
 `pftm10-control` 1.2.1 adds boot-time privacy replay:
 
@@ -95,7 +125,7 @@ manager_uid=$(stat -c %u /data/user/0/me.bmax.apatch)
 su "$manager_uid" -c "/system/bin/truncate su module info pftm10-kprobe"
 ```
 
-The result includes `version=1.1.1`, `load_event=post-fs-data`, and
+The result includes `version=1.3.0`, `load_event=post-fs-data`, and
 `load_source=file`. `pftm10ctl health` and `pftm10ctl caps` use this check
 because `dmesg` may rotate the original load message out of the ring.
 
@@ -110,7 +140,8 @@ pftm10ctl kprobe-ctl banner
 
 The adapter fixes the KPM name to `pftm10-kprobe`, drops to the APatch manager
 UID, and invokes only `SUPERCALL_KPM_CONTROL`. It cannot load, unload, or choose
-another KPM. The KPM control0 commands remain bounded and read-only.
+another KPM. Read-only probes are bounded. The only state-changing commands are
+the explicit charger recovery and PD-gated 3A controls described above.
 
 Boot-log context only:
 

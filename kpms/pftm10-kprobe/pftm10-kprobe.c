@@ -9,12 +9,57 @@
 #include <kputils.h>
 
 KPM_NAME("pftm10-kprobe");
-KPM_VERSION("1.1.1");
+KPM_VERSION("1.3.0");
 KPM_LICENSE("GPL v2");
 KPM_AUTHOR("syttys123");
-KPM_DESCRIPTION("Read-only PFTM10 kernel facts, symbol lookup, and bounded reads");
+KPM_DESCRIPTION("PFTM10 probes with charger recovery and gated 5V/3A input control");
 
 static const char *boot_args;
+
+#define MT6360_SET_AICR_OFFSET 0x94dad8UL
+
+typedef int (*pd_contract_fn)(void *tcpc, int *voltage_mv, int *current_ma);
+typedef int (*aicl_enable_fn)(int enable);
+typedef int (*mt6360_set_aicr_fn)(void *chip, int current_ua);
+
+static unsigned long mt6360_chip_address(void)
+{
+    unsigned long slot;
+    unsigned long chip;
+    unsigned long charger_dev;
+
+    slot = kallsyms_lookup_name("g_oplus_chip");
+    if (!slot)
+        return 0;
+
+    chip = *(volatile unsigned long *)slot;
+    if (!chip)
+        return 0;
+
+    charger_dev = *(volatile unsigned long *)(chip + 0x210);
+    if (!charger_dev)
+        return 0;
+
+    return *(volatile unsigned long *)(charger_dev + 0x28);
+}
+
+static int pd_contract_status(int *voltage_mv, int *current_ma)
+{
+    unsigned long get_tcpc;
+    unsigned long contract;
+    void *tcpc;
+
+    get_tcpc = kallsyms_lookup_name("tcpc_dev_get_by_name");
+    contract = kallsyms_lookup_name("tcpm_inquire_pd_contract");
+    if (!get_tcpc || !contract)
+        return -1000;
+
+    tcpc = ((void *(*)(const char *))get_tcpc)("type_c_port0");
+    if (!tcpc)
+        return -1001;
+
+    return ((pd_contract_fn)contract)(tcpc, voltage_mv, current_ma);
+}
 
 static long copy_reply(char *__user out_msg, int outlen, const char *reply)
 {
@@ -111,7 +156,147 @@ static long kprobe_control0(const char *args, char *__user out_msg, int outlen)
     if (!strcmp(cmd, "help")) {
         snprintf(reply, sizeof(reply),
                  "commands: info | banner | cmdline | sym:<name> | "
-                 "u32:<name> | u64:<name> | bytes:<name> | str:<name> | pstr:<name> | help");
+                 "u32:<name> | u64:<name> | bytes:<name> | str:<name> | "
+                 "pstr:<name> | charger-unsuspend | pd-contract | "
+                 "charger-3a | charger-restore | help");
+        return copy_reply(out_msg, outlen, reply);
+    }
+
+    if (!strcmp(cmd, "charger-unsuspend")) {
+        unsigned long unsuspend_addr =
+            kallsyms_lookup_name("oplus_chg_unsuspend_charger");
+        unsigned long stop_addr =
+            kallsyms_lookup_name("oplus_chg_get_stop_chg");
+        int stop_chg = -1;
+
+        if (!unsuspend_addr) {
+            snprintf(reply, sizeof(reply),
+                     "error: oplus_chg_unsuspend_charger not found");
+            return copy_reply(out_msg, outlen, reply);
+        }
+
+        ((void (*)(void))unsuspend_addr)();
+        if (stop_addr)
+            stop_chg = ((int (*)(void))stop_addr)();
+
+        pr_info("pftm10-kprobe charger unsuspend fn=0x%lx stop=%d\n",
+                unsuspend_addr, stop_chg);
+        snprintf(reply, sizeof(reply),
+                 "charger_unsuspend_called=1 fn=0x%lx stop_chg=%d",
+                 unsuspend_addr, stop_chg);
+        return copy_reply(out_msg, outlen, reply);
+    }
+
+    if (!strcmp(cmd, "pd-contract")) {
+        int voltage_mv = -1;
+        int current_ma = -1;
+        int rc = pd_contract_status(&voltage_mv, &current_ma);
+        unsigned long connected_addr =
+            kallsyms_lookup_name("tcpm_inquire_pd_connected");
+        unsigned long get_tcpc =
+            kallsyms_lookup_name("tcpc_dev_get_by_name");
+        int connected = -1;
+
+        if (connected_addr && get_tcpc) {
+            void *tcpc =
+                ((void *(*)(const char *))get_tcpc)("type_c_port0");
+            if (tcpc)
+                connected = ((int (*)(void *))connected_addr)(tcpc);
+        }
+
+        snprintf(reply, sizeof(reply),
+                 "pd_connected=%d rc=%d contract_mv=%d contract_ma=%d",
+                 connected, rc, voltage_mv, current_ma);
+        pr_info("pftm10-kprobe pd contract: %s\n", reply);
+        return copy_reply(out_msg, outlen, reply);
+    }
+
+    if (!strcmp(cmd, "charger-3a")) {
+        unsigned long text_addr;
+        unsigned long set_aicr_addr;
+        unsigned long aicl_addr;
+        unsigned long unsuspend_addr;
+        unsigned long chip;
+        int voltage_mv = -1;
+        int current_ma = -1;
+        int contract_rc;
+        int aicl_rc;
+        int aicr_rc;
+
+        contract_rc = pd_contract_status(&voltage_mv, &current_ma);
+        if (contract_rc != 0 || voltage_mv < 4500 || voltage_mv > 5500 ||
+            current_ma < 3000) {
+            snprintf(reply, sizeof(reply),
+                     "error: PD contract does not permit 5V/3A "
+                     "rc=%d mv=%d ma=%d",
+                     contract_rc, voltage_mv, current_ma);
+            return copy_reply(out_msg, outlen, reply);
+        }
+
+        chip = mt6360_chip_address();
+        set_aicr_addr = kallsyms_lookup_name("mt6360_set_aicr");
+        if (!set_aicr_addr) {
+            text_addr = kallsyms_lookup_name("_text");
+            if (text_addr)
+                set_aicr_addr = text_addr + MT6360_SET_AICR_OFFSET;
+        }
+        aicl_addr = kallsyms_lookup_name("mt6360_aicl_enable");
+        unsuspend_addr = kallsyms_lookup_name("oplus_chg_unsuspend_charger");
+        if (!chip || !set_aicr_addr || !aicl_addr || !unsuspend_addr) {
+            snprintf(reply, sizeof(reply),
+                     "error: charger controls unavailable "
+                     "chip=0x%lx aicr=0x%lx aicl=0x%lx unsuspend=0x%lx",
+                     chip, set_aicr_addr, aicl_addr, unsuspend_addr);
+            return copy_reply(out_msg, outlen, reply);
+        }
+
+        aicl_rc = ((aicl_enable_fn)aicl_addr)(0);
+        ((void (*)(void))unsuspend_addr)();
+        aicr_rc = ((mt6360_set_aicr_fn)set_aicr_addr)(
+            (void *)chip, 3000000);
+        pr_info("pftm10-kprobe charger 3A: contract=%dmV/%dmA "
+                "aicl_rc=%d aicr_rc=%d chip=0x%lx\n",
+                voltage_mv, current_ma, aicl_rc, aicr_rc, chip);
+        snprintf(reply, sizeof(reply),
+                 "charger_3a_applied=1 contract_mv=%d contract_ma=%d "
+                 "request_ma=3000 aicl_rc=%d aicr_rc=%d chip=0x%lx",
+                 voltage_mv, current_ma, aicl_rc, aicr_rc, chip);
+        return copy_reply(out_msg, outlen, reply);
+    }
+
+    if (!strcmp(cmd, "charger-restore")) {
+        unsigned long text_addr;
+        unsigned long set_aicr_addr;
+        unsigned long aicl_addr;
+        unsigned long chip;
+        int aicl_rc;
+        int aicr_rc;
+
+        chip = mt6360_chip_address();
+        set_aicr_addr = kallsyms_lookup_name("mt6360_set_aicr");
+        if (!set_aicr_addr) {
+            text_addr = kallsyms_lookup_name("_text");
+            if (text_addr)
+                set_aicr_addr = text_addr + MT6360_SET_AICR_OFFSET;
+        }
+        aicl_addr = kallsyms_lookup_name("mt6360_aicl_enable");
+        if (!chip || !set_aicr_addr || !aicl_addr) {
+            snprintf(reply, sizeof(reply),
+                     "error: charger restore controls unavailable "
+                     "chip=0x%lx aicr=0x%lx aicl=0x%lx",
+                     chip, set_aicr_addr, aicl_addr);
+            return copy_reply(out_msg, outlen, reply);
+        }
+
+        aicl_rc = ((aicl_enable_fn)aicl_addr)(1);
+        aicr_rc = ((mt6360_set_aicr_fn)set_aicr_addr)(
+            (void *)chip, 500000);
+        pr_info("pftm10-kprobe charger restore: aicl_rc=%d aicr_rc=%d "
+                "chip=0x%lx\n", aicl_rc, aicr_rc, chip);
+        snprintf(reply, sizeof(reply),
+                 "charger_restore_applied=1 request_ma=500 "
+                 "aicl_rc=%d aicr_rc=%d chip=0x%lx",
+                 aicl_rc, aicr_rc, chip);
         return copy_reply(out_msg, outlen, reply);
     }
 

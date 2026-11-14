@@ -42,7 +42,7 @@ $module = $modules | Where-Object { $_.id -eq 'pftm10-control' } | Select-Object
 if (-not $module) {
     throw "pftm10-control is not installed"
 }
-if ($module.version -ne '1.2.1' -or $module.versionCode -ne '8') {
+if ($module.version -ne '1.4.0' -or $module.versionCode -ne '10') {
     throw "Unexpected pftm10-control version"
 }
 if ($module.enabled -ne 'true' -or $module.update -ne 'false') {
@@ -62,7 +62,7 @@ if ($health -notmatch '(?m)^health=ok$') {
 if ($caps -notmatch '(?m)^capabilities=ok$') {
     throw "Capability check failed"
 }
-if ($caps -notmatch '(?m)^kprobe_version=1\.1\.1$') {
+if ($caps -notmatch '(?m)^kprobe_version=1\.3\.0$') {
     throw "Unexpected KPM version"
 }
 if ($caps -notmatch '(?m)^kprobe_event=post-fs-data$') {
@@ -105,9 +105,35 @@ $controlHelp = (
 if ($controlHelp -notmatch 'commands: info \| banner \| cmdline') {
     throw "KPM control0 help response is invalid"
 }
+if ($controlHelp -notmatch 'charger-unsuspend') {
+    throw "KPM charger recovery command is unavailable"
+}
+if ($controlHelp -notmatch 'pd-contract' -or
+    $controlHelp -notmatch 'charger-3a' -or
+    $controlHelp -notmatch 'charger-restore') {
+    throw "KPM gated 3A charger controls are unavailable"
+}
+
+$bootLog = (
+    & $Adb -s $Device shell 'su -c "cat /data/adb/pftm10-control/boot.log"' 2>&1
+) -join "`n"
+if ($bootLog -notmatch '(?m)^charger_unsuspend_rc=0$' -or
+    $bootLog -notmatch 'charger_unsuspend_called=1') {
+    throw "Boot-time charger suspend recovery did not run"
+}
+
+$charge3aArmed = (
+    & $Adb -s $Device shell 'su -c "test -f /data/adb/pftm10-control/charge-3a.enabled; echo $?"' 2>&1
+) -join "`n"
+if ($charge3aArmed -match '(?m)^0$') {
+    if ($bootLog -notmatch '(?m)^charger_3a_rc=0$' -or
+        $bootLog -notmatch 'charger_3a_applied=1') {
+        throw "Armed 5V/3A charger policy did not apply at boot"
+    }
+}
 
 Write-Output (
-    "DEVICE_CHECK_OK module={0} versionCode={1} health=ok capabilities=ok kpm=1.1.1 control=ok battery_restrict=masked privacy=camera_location_denied,oshare_bg_denied event=post-fs-data" -f
+    "DEVICE_CHECK_OK module={0} versionCode={1} health=ok capabilities=ok kpm=1.3.0 control=ok charger_unsuspend=ok charger_3a=ready battery_restrict=masked privacy=camera_location_denied,oshare_bg_denied event=post-fs-data" -f
         $module.version,
         $module.versionCode
 )

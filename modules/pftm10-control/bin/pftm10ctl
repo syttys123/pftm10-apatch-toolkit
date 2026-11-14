@@ -4,9 +4,10 @@ STATE=/data/adb/pftm10-control
 LOG="$STATE/boot.log"
 BATTERY_RESTRICT_APK=/my_bigball/plugin/BatteryRestrictPlugin/BatteryRestrictPlugin.apk
 BATTERY_RESTRICT_MASK="$STATE/battery-restrict-disabled.apk"
+CHARGE_3A_SENTINEL="$STATE/charge-3a.enabled"
 
 usage() {
-    echo "usage: pftm10ctl {status|caps|health|preload|kprobe|kprobe-ctl|kpm-info|kpm-list|battery-restrict|root|bootlog|kpm|enforcing|permissive}"
+    echo "usage: pftm10ctl {status|caps|health|preload|kprobe|kprobe-ctl|kpm-info|kpm-list|battery-restrict|charge-3a|root|bootlog|kpm|enforcing|permissive}"
 }
 
 if [ "$(id -u)" != "0" ]; then
@@ -38,7 +39,7 @@ preload_status() {
 
 kprobe_status() {
     kprobe=/data/adb/ap/kpm/pftm10-kprobe/pftm10-kprobe.kpm
-    expected=95568f27b8ffbb21c66c47b4953b6081884d7bc07a67a01a460f79ac98a0e7db
+    expected=c962a36c65dc8fc560d7b08f19777ad6b00784cc3cea843e836731d5b1433594
 
     if [ ! -f "$kprobe" ]; then
         echo "kprobe_file=missing"
@@ -203,6 +204,68 @@ battery_restrict_restore() {
     battery_restrict_status
 }
 
+charge_3a_status() {
+    if [ -f "$CHARGE_3A_SENTINEL" ]; then
+        echo "charge_3a=armed"
+    else
+        echo "charge_3a=disabled"
+    fi
+    watchdog=running
+    if [ -f "$STATE/charge-3a.pid" ]; then
+        pid=$(cat "$STATE/charge-3a.pid" 2>/dev/null)
+        [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null || watchdog=stale
+    else
+        watchdog=missing
+    fi
+    echo "charge_3a_watchdog=$watchdog"
+    "${0%/*}/pftm10-kpmctl" pd-contract 2>&1
+    if [ -r /sys/devices/virtual/oplus_chg/battery/input_current_settled ]; then
+        echo "input_current_settled=$(cat /sys/devices/virtual/oplus_chg/battery/input_current_settled)"
+    fi
+}
+
+charge_3a_apply() {
+    output=$("${0%/*}/pftm10-kpmctl" charger-3a 2>&1)
+    rc=$?
+    echo "$output"
+    [ "$rc" -eq 0 ] || return "$rc"
+    case "$output" in
+        *charger_3a_applied=1*) return 0 ;;
+    esac
+    return 1
+}
+
+charge_3a_enable() {
+    mkdir -p "$STATE"
+    : > "$CHARGE_3A_SENTINEL"
+    chmod 0600 "$CHARGE_3A_SENTINEL"
+    charge_3a_apply
+    watchdog_running=no
+    if [ -f "$STATE/charge-3a.pid" ]; then
+        pid=$(cat "$STATE/charge-3a.pid" 2>/dev/null)
+        [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null && watchdog_running=yes
+    fi
+    if [ "$watchdog_running" = "no" ]; then
+        setsid /system/bin/sh "${0%/*}/charge-3a-watchdog.sh" \
+            >/dev/null 2>&1 &
+        echo "$!" > "$STATE/charge-3a.pid"
+    fi
+}
+
+charge_3a_disable() {
+    if [ -f "$STATE/charge-3a.pid" ]; then
+        pid=$(cat "$STATE/charge-3a.pid" 2>/dev/null)
+        if [ -n "$pid" ]; then
+            kill "$pid" 2>/dev/null
+        fi
+        rm -f "$STATE/charge-3a.pid"
+    fi
+    rm -f "$CHARGE_3A_SENTINEL"
+    sleep 1
+    "${0%/*}/pftm10-kpmctl" charger-restore 2>&1
+    charge_3a_status
+}
+
 caps_status() {
     rc=0
     echo "root_uid=$(id -u)"
@@ -320,6 +383,30 @@ case "$1" in
                 ;;
             *)
                 echo "usage: pftm10ctl battery-restrict {status|mask|restore}" >&2
+                exit 2
+                ;;
+        esac
+        ;;
+    charge-3a)
+        case "$2" in
+            status)
+                charge_3a_status
+                exit $?
+                ;;
+            enable|arm)
+                charge_3a_enable
+                exit $?
+                ;;
+            disable|restore)
+                charge_3a_disable
+                exit $?
+                ;;
+            apply)
+                charge_3a_apply
+                exit $?
+                ;;
+            *)
+                echo "usage: pftm10ctl charge-3a {status|enable|disable|apply}" >&2
                 exit 2
                 ;;
         esac

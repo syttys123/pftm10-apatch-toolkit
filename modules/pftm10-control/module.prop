@@ -1,6 +1,6 @@
 id=pftm10-control
 name=PFTM10 Control Module
-version=1.2.1
-versionCode=8
+version=1.4.0
+versionCode=10
 author=syttys123
-description=Local APatch control matrix with KPM control0 access, a reversible GMS-check crash mask, and boot-enforced privacy AppOps.
+description=Local APatch control matrix with boot charger recovery, gated 5V/3A input control, KPM control0 access, a reversible GMS-check crash mask, and privacy AppOps.

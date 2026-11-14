@@ -14,10 +14,14 @@ Files:
 - `bin/pftm10-kpmctl`: static root-only adapter that drops to the APatch
   manager UID and calls `pftm10-kprobe` control0 through the KernelPatch
   supercall ABI.
+- `bin/charge-3a-watchdog.sh`: while explicitly armed and while the live PD
+  contract remains at least `5V/3000mA`, reapplies the gated 3A input request
+  after OPPO charger policy rewrites it.
 - `post-fs-data.sh`: optionally masks the known CR.39
   `BatteryRestrictPlugin.apk` that crashes when GMS is absent.
 - `service.sh`: after `sys.boot_completed`, reapplies the camera location
-  AppOps denial and fixes the OShare background-location permission as denied.
+  AppOps denial, fixes the OShare background-location permission as denied,
+  and clears the hidden kernel charger suspend state.
 - `uninstall.sh`: removes `/data/adb/pftm10-control`.
 
 The module does not write Android partitions, boot images, vbmeta, SELinux
@@ -39,6 +43,10 @@ pftm10ctl kpm-list
 pftm10ctl battery-restrict status
 pftm10ctl battery-restrict mask
 pftm10ctl battery-restrict restore
+pftm10ctl charge-3a status
+pftm10ctl charge-3a enable
+pftm10ctl charge-3a disable
+pftm10ctl charge-3a apply
 pftm10ctl root
 pftm10ctl bootlog
 pftm10ctl kpm
@@ -51,7 +59,16 @@ the read-only KernelPatch `module info` supercommand. This does not depend on
 the kernel `dmesg` ring retaining the original boot message.
 
 `kprobe-ctl` is fixed to `pftm10-kprobe`; it cannot load, unload, or select a
-different KPM. The current KPM control0 surface is bounded and read-only.
+different KPM. The KPM's ordinary probes are bounded and read-only. Its explicit
+state-changing commands are charger suspend recovery and PD-gated AICR control.
+`charger-3a` refuses to write 3A unless `tcpm_inquire_pd_contract()` confirms a
+`5V/3000mA` contract. `charge-3a disable` stops the watchdog and restores AICL
+plus the 500mA request.
+
+On the current standard USB host connection, the hidden suspend state leaves
+MT6360 at `IBUS=0 / IBAT=0` while `CHG_EN=1`. `service.sh` records
+`charger_unsuspend_rc` and the function result in the boot log. After the call,
+the hardware reports active input/battery current and `CHG_STATUS=progress`.
 
 `battery-restrict mask` bind-mounts a zero-length file over
 `BatteryRestrictPlugin.apk`. This prevents the plugin's `google_check` worker

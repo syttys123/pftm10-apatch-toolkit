@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.4.0 - 2026-11-14
+
+- bump `pftm10-kprobe` to 1.3.0 with explicit charger suspend recovery,
+  PD contract inspection, and gated `5V/3A` input controls
+- correct the MT6360 AICR units to microamps and verify the controller accepts
+  an AICR request of 3000mA
+- bump `pftm10-control` to 1.4.0 with a PD-gated 3A watchdog that restores the
+  input limit after OPPO policy rewrites it
+- add `pftm10ctl charge-3a status|enable|disable|apply` and a 500mA restore path
+- extend host device acceptance to verify charger recovery and the 3A control
+  surface
+
 ## v1.3.2 - 2026-11-14
 
 - bump `pftm10-control` to 1.2.1

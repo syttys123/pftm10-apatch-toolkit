@@ -5,7 +5,8 @@ STATE=/data/adb/pftm10-control
 LOG="$STATE/boot.log"
 
 mkdir -p "$STATE"
-chmod 0755 "$MODDIR/bin/pftm10ctl" "$MODDIR/bin/pftm10-kpmctl" 2>/dev/null
+chmod 0755 "$MODDIR/bin/pftm10ctl" "$MODDIR/bin/pftm10-kpmctl" \
+    "$MODDIR/bin/charge-3a-watchdog.sh" 2>/dev/null
 
 i=0
 while [ "$(getprop sys.boot_completed)" != "1" ] && [ "$i" -lt 60 ]; do
@@ -18,6 +19,12 @@ camera_coarse_rc=99
 oshare_revoke_rc=99
 oshare_flags_rc=99
 privacy_policy=disabled
+charger_unsuspend_output="not_run"
+charger_unsuspend_rc=99
+charger_3a=disabled
+charger_3a_output="not_run"
+charger_3a_rc=99
+charger_3a_watchdog_pid=none
 
 if [ ! -f "$STATE/privacy.disabled" ]; then
     privacy_policy=enabled
@@ -58,6 +65,39 @@ for rc in "$camera_fine_rc" "$camera_coarse_rc" "$oshare_revoke_rc" "$oshare_fla
     [ "$rc" -eq 0 ] || privacy_policy_rc=1
 done
 
+charger_unsuspend_output=$("$MODDIR/bin/pftm10ctl" kprobe-ctl charger-unsuspend 2>&1)
+charger_unsuspend_rc=$?
+
+if [ -f "$STATE/charge-3a.enabled" ]; then
+    if [ -f "$STATE/charge-3a.pid" ]; then
+        old_pid=$(cat "$STATE/charge-3a.pid" 2>/dev/null)
+        if [ -n "$old_pid" ]; then
+            kill "$old_pid" 2>/dev/null
+        fi
+        rm -f "$STATE/charge-3a.pid"
+    fi
+
+    charger_3a=enabled
+    charger_3a_rc=1
+    i=0
+    while [ "$i" -lt 15 ]; do
+        charger_3a_output=$("$MODDIR/bin/pftm10ctl" charge-3a apply 2>&1)
+        case "$charger_3a_output" in
+            *charger_3a_applied=1*)
+                charger_3a_rc=0
+                break
+                ;;
+        esac
+        sleep 2
+        i=$((i + 1))
+    done
+
+    setsid /system/bin/sh "$MODDIR/bin/charge-3a-watchdog.sh" \
+        >/dev/null 2>&1 &
+    charger_3a_watchdog_pid=$!
+    echo "$charger_3a_watchdog_pid" > "$STATE/charge-3a.pid"
+fi
+
 {
     echo "event=service"
     echo "time_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)"
@@ -73,6 +113,12 @@ done
     echo "camera_coarse_rc=$camera_coarse_rc"
     echo "oshare_permission_rc=$oshare_revoke_rc"
     echo "oshare_flags_rc=$oshare_flags_rc"
+    echo "charger_unsuspend_rc=$charger_unsuspend_rc"
+    echo "charger_unsuspend=$charger_unsuspend_output"
+    echo "charger_3a=$charger_3a"
+    echo "charger_3a_rc=$charger_3a_rc"
+    echo "charger_3a_output=$charger_3a_output"
+    echo "charger_3a_watchdog_pid=$charger_3a_watchdog_pid"
 } >> "$LOG"
 
 "$MODDIR/bin/pftm10ctl" health >> "$LOG" 2>&1
