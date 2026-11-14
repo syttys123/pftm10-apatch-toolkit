@@ -107,7 +107,7 @@ jobs:
             HOSTCC=clang HOSTLD=ld.lld olddefconfig
           grep -E '^CONFIG_LOCALVERSION=|^CONFIG_MODULE_SIG_FORCE=|^CONFIG_MODVERSIONS=' out/.config
 
-      - name: Build kernel image and board DTBs
+      - name: Build kernel image
         shell: bash
         run: |
           set -euxo pipefail
@@ -119,7 +119,6 @@ jobs:
             HOSTCC=clang HOSTLD=ld.lld
           )
           make "${MAKE_ARGS[@]}" -j"$(nproc)" Image.gz
-          make "${MAKE_ARGS[@]}" -j"$(nproc)" dtbs
           make "${MAKE_ARGS[@]}" kernelrelease | tee out/kernelrelease.txt
           test "$(cat out/kernelrelease.txt)" = "4.19.191+"
 
@@ -128,13 +127,11 @@ jobs:
         run: |
           set -euxo pipefail
           OUT="$GITHUB_WORKSPACE/build-output"
-          mkdir -p "$OUT/dtb"
+          mkdir -p "$OUT"
           cp "$KERNEL_DIR/out/arch/arm64/boot/Image.gz" "$OUT/"
           cp "$KERNEL_DIR/out/System.map" "$OUT/"
           cp "$KERNEL_DIR/out/.config" "$OUT/kernel.config"
           cp "$KERNEL_DIR/out/kernelrelease.txt" "$OUT/"
-          cp "$KERNEL_DIR/out/arch/arm64/boot/dts/mediatek/mt6833.dtb" "$OUT/dtb/"
-          cp "$KERNEL_DIR/out/arch/arm64/boot/dts/mediatek/oplus6833_21101.dtb" "$OUT/dtb/"
           {
             echo "source_repo=$KERNEL_REPO"
             echo "source_branch=$KERNEL_BRANCH"
@@ -143,6 +140,7 @@ jobs:
             echo "kernelrelease=$(cat "$OUT/kernelrelease.txt")"
             echo "config_sha256=$(sha256sum "$OUT/kernel.config" | cut -d' ' -f1)"
             echo "image_sha256=$(sha256sum "$OUT/Image.gz" | cut -d' ' -f1)"
+            echo "dtb_policy=retain stock C.39 device DTB"
             echo "run_id=${GITHUB_RUN_ID}"
           } > "$OUT/BUILD-INFO.txt"
           (
@@ -173,14 +171,13 @@ jobs:
             - Source commit: `${{ env.KERNEL_COMMIT }}`
             - Expected kernel release: `4.19.191+`
             - Module signing force: disabled for compatibility testing
+            - DTB: stock C.39 device DTB retained for boot packaging
             - No device images or personal data are included
           files: |
             build-output/Image.gz
             build-output/System.map
             build-output/kernel.config
             build-output/kernelrelease.txt
-            build-output/dtb/mt6833.dtb
-            build-output/dtb/oplus6833_21101.dtb
             build-output/BUILD-INFO.txt
             build-output/SHA256SUMS
             kernel-build-${{ github.run_id }}.tar.gz
