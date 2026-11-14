@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- document runtime and physical cleanup for third-party preload partitions
+- add post-boot acceptance checks for non-verity dynamic partition writes
+
 ## v1.0.1 - 2026-11-14
 
 - initial public toolkit structure
