@@ -9,10 +9,17 @@ PFTM10 / OP526D MT6833 kernel. The workflow builds from the public
 ```text
 source branch   oppo/mt6833_t_13.0
 source commit   1d9fa359f26e7b7c5e5a2ef7041f7569ec68aaf0
+module branch   oppo/mt6833_t_13.0
+module commit   a9ed2381b546fe472a4bdb5c8a0d874abc1ad968
 compiler        Android Clang r383902 / 11.0.1
 base config     kernel/config/pftm10-c39.config
 release         must resolve to 4.19.191+
 ```
+
+The kernel repository contains relative symlinks into OPPO's companion
+`android_kernel_modules_oppo_mt6833` tree. The workflow fetches that pinned
+module source and exposes its `vendor/` subtree beside the kernel checkout,
+matching the original Android build layout.
 
 The build uses the live device `kernel.config` as its base instead of trusting
 the public defconfig alone. Two signature settings are changed for compatibility

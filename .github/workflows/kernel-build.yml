@@ -23,8 +23,12 @@ jobs:
       KERNEL_REPO: https://github.com/oppo-source/android_kernel_oppo_mt6833.git
       KERNEL_BRANCH: oppo/mt6833_t_13.0
       KERNEL_COMMIT: 1d9fa359f26e7b7c5e5a2ef7041f7569ec68aaf0
+      MODULE_REPO: https://github.com/oppo-source/android_kernel_modules_oppo_mt6833.git
+      MODULE_BRANCH: oppo/mt6833_t_13.0
+      MODULE_COMMIT: a9ed2381b546fe472a4bdb5c8a0d874abc1ad968
       CLANG_URL: https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/android11-release/clang-r383902.tar.gz
       KERNEL_DIR: ${{ github.workspace }}/work/kernel
+      MODULE_DIR: ${{ github.workspace }}/work/modules
 
     steps:
       - name: Check out toolkit
@@ -49,6 +53,20 @@ jobs:
           git -C "$KERNEL_DIR" fetch --depth=1 origin "$KERNEL_BRANCH"
           git -C "$KERNEL_DIR" checkout --detach FETCH_HEAD
           test "$(git -C "$KERNEL_DIR" rev-parse HEAD)" = "$KERNEL_COMMIT"
+
+      - name: Fetch pinned OPPO vendor modules
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git init "$MODULE_DIR"
+          git -C "$MODULE_DIR" remote add origin "$MODULE_REPO"
+          git -C "$MODULE_DIR" fetch --depth=1 origin "$MODULE_BRANCH"
+          test "$(git -C "$MODULE_DIR" rev-parse FETCH_HEAD)" = "$MODULE_COMMIT"
+          mkdir -p "$MODULE_DIR"
+          git -C "$MODULE_DIR" archive FETCH_HEAD vendor | tar -x -C "$MODULE_DIR"
+          ln -s "$MODULE_DIR/vendor" "$(dirname "$KERNEL_DIR")/vendor"
+          test -f "$(dirname "$KERNEL_DIR")/vendor/oplus/kernel/oplus_performance/sched_assist/Kconfig"
+          test -f "$(dirname "$KERNEL_DIR")/vendor/oplus/kernel/oplus_performance/klockopt/Kconfig"
 
       - name: Download matching Android Clang
         shell: bash
