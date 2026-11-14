@@ -2,6 +2,7 @@
 
 A read-only KernelPatch module for PFTM10. It exposes:
 
+- boot-time `linux_banner` and `system_state` diagnostics.
 - `info`: caller UID, KernelPatch version, `init_task` address, and module init
   arguments.
 - `banner`: bounded read of the kernel `linux_banner` string.

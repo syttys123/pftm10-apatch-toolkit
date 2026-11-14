@@ -9,6 +9,8 @@
 - record `health=ok` or `health=failed` automatically on every boot
 - bump `pftm10-kprobe` to 1.1.0 with bounded read-only kernel introspection:
   `banner`, `cmdline`, `u32`, `u64`, `bytes`, `str`, and whitelisted `pstr`
+- add boot-time KPM banner/system-state diagnostics and module-side KPM file
+  integrity/load checks
 
 ## v1.0.1 - 2026-11-14
 

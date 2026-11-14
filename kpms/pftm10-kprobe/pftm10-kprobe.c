@@ -9,7 +9,7 @@
 #include <kputils.h>
 
 KPM_NAME("pftm10-kprobe");
-KPM_VERSION("1.1.0");
+KPM_VERSION("1.1.1");
 KPM_LICENSE("GPL v2");
 KPM_AUTHOR("syttys123");
 KPM_DESCRIPTION("Read-only PFTM10 kernel facts, symbol lookup, and bounded reads");
@@ -66,9 +66,26 @@ static int bytes_to_hex(char *dst, int dstlen, const unsigned char *src, int len
 
 static long kprobe_init(const char *args, const char *event, void *__user reserved)
 {
+    char banner[192];
+    unsigned long banner_addr;
+    unsigned long state_addr;
+
     boot_args = args;
     pr_info("pftm10-kprobe init, event: %s, args: %s, kpver: %x\n",
             event ? event : "(null)", args ? args : "(null)", kpver);
+
+    banner_addr = kallsyms_lookup_name("linux_banner");
+    if (banner_addr) {
+        copy_kernel_string(banner, sizeof(banner), (const char *)banner_addr);
+        pr_info("pftm10-kprobe banner: %s\n", banner);
+    }
+
+    state_addr = kallsyms_lookup_name("system_state");
+    if (state_addr) {
+        pr_info("pftm10-kprobe system_state=0x%x\n",
+                *(volatile const unsigned int *)state_addr);
+    }
+
     return 0;
 }
 

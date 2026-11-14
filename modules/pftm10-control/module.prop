@@ -1,6 +1,6 @@
 id=pftm10-control
 name=PFTM10 Control Module
-version=1.0.2
-versionCode=3
+version=1.0.3
+versionCode=4
 author=syttys123
-description=Local APatch boot-stage probe, health check, and root diagnostic interface for PFTM10.
+description=Local APatch boot-stage probe, KPM integrity check, health check, and root diagnostic interface for PFTM10.

@@ -4,7 +4,7 @@ STATE=/data/adb/pftm10-control
 LOG="$STATE/boot.log"
 
 usage() {
-    echo "usage: pftm10ctl {status|health|preload|root|bootlog|kpm|enforcing|permissive}"
+    echo "usage: pftm10ctl {status|health|preload|kprobe|root|bootlog|kpm|enforcing|permissive}"
 }
 
 if [ "$(id -u)" != "0" ]; then
@@ -34,6 +34,34 @@ preload_status() {
     [ "$entries" = "0" ] && [ "$build_prop" = "yes" ]
 }
 
+kprobe_status() {
+    kprobe=/data/adb/ap/kpm/pftm10-kprobe/pftm10-kprobe.kpm
+    expected=95568f27b8ffbb21c66c47b4953b6081884d7bc07a67a01a460f79ac98a0e7db
+
+    if [ ! -f "$kprobe" ]; then
+        echo "kprobe_file=missing"
+        echo "kprobe_load=unknown"
+        return 1
+    fi
+
+    actual=$(sha256sum "$kprobe" 2>/dev/null | cut -d ' ' -f 1)
+    if [ "$actual" = "$expected" ]; then
+        echo "kprobe_file=match"
+    else
+        echo "kprobe_file=mismatch"
+        echo "kprobe_sha256=$actual"
+        echo "kprobe_load=unknown"
+        return 1
+    fi
+
+    if dmesg 2>/dev/null | grep -q "load_module_ex: \[pftm10-kprobe\] succeed"; then
+        echo "kprobe_load=ok"
+    else
+        echo "kprobe_load=unknown"
+        return 1
+    fi
+}
+
 health_status() {
     rc=0
     echo "uid=$(id -u)"
@@ -57,6 +85,7 @@ health_status() {
         rc=1
     fi
     preload_status || rc=1
+    kprobe_status || rc=1
 
     if [ "$rc" -eq 0 ]; then
         echo "health=ok"
@@ -85,6 +114,10 @@ case "$1" in
         preload_status
         exit $?
         ;;
+    kprobe)
+        kprobe_status
+        exit $?
+        ;;
     root)
         id
         echo "context=$(cat /proc/self/attr/current 2>/dev/null)"
@@ -93,7 +126,7 @@ case "$1" in
         tail -n 40 "$LOG" 2>/dev/null
         ;;
     kpm)
-        dmesg | grep -Ei "pftm10-kprobe|kpm hello" | tail -n 20
+        dmesg | grep -Ei "pftm10-kprobe|kpm hello" | tail -n 30
         ;;
     enforcing)
         setenforce 1
