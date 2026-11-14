@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased
+## v1.2.1 - 2026-11-14
+
+- add manager-authorized KPM load verification and a read-only capability
+  matrix to `pftm10-control` 1.0.4
+- add a sanitized host-side device acceptance check
+
+## v1.2.0 - 2026-11-14
 
 - document runtime and physical cleanup for third-party preload partitions
 - add post-boot acceptance checks for non-verity dynamic partition writes

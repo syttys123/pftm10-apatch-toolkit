@@ -4,7 +4,7 @@ STATE=/data/adb/pftm10-control
 LOG="$STATE/boot.log"
 
 usage() {
-    echo "usage: pftm10ctl {status|health|preload|kprobe|root|bootlog|kpm|enforcing|permissive}"
+    echo "usage: pftm10ctl {status|caps|health|preload|kprobe|kpm-info|kpm-list|root|bootlog|kpm|enforcing|permissive}"
 }
 
 if [ "$(id -u)" != "0" ]; then
@@ -54,12 +54,86 @@ kprobe_status() {
         return 1
     fi
 
-    if dmesg 2>/dev/null | grep -q "load_module_ex: \[pftm10-kprobe\] succeed"; then
+    if kpm_info_status; then
         echo "kprobe_load=ok"
+        kprobe_version=$(printf '%s\n' "$KPM_INFO" | sed -n 's/^version=//p' | head -n 1)
+        kprobe_event=$(printf '%s\n' "$KPM_INFO" | sed -n 's/^load_event=//p' | head -n 1)
+        echo "kprobe_version=${kprobe_version:-unknown}"
+        echo "kprobe_event=${kprobe_event:-unknown}"
+        echo "kprobe_source=manager-supercmd"
     else
         echo "kprobe_load=unknown"
         return 1
     fi
+}
+
+manager_uid() {
+    for path in /data/user/0/me.bmax.apatch /data/data/me.bmax.apatch; do
+        if [ -d "$path" ]; then
+            stat -c %u "$path" 2>/dev/null
+            return $?
+        fi
+    done
+    return 1
+}
+
+kpm_info_status() {
+    KPM_MANAGER_UID=$(manager_uid)
+    if [ -z "$KPM_MANAGER_UID" ]; then
+        echo "kprobe_manager=missing"
+        KPM_INFO=
+        return 1
+    fi
+
+    if ! KPM_INFO=$(su "$KPM_MANAGER_UID" -c '/system/bin/truncate su module info pftm10-kprobe' 2>/dev/null); then
+        echo "kprobe_manager_uid=$KPM_MANAGER_UID"
+        echo "kprobe_info=unavailable"
+        KPM_INFO=
+        return 1
+    fi
+
+    if ! printf '%s\n' "$KPM_INFO" | grep -q '^name=pftm10-kprobe$'; then
+        echo "kprobe_manager_uid=$KPM_MANAGER_UID"
+        echo "kprobe_info=invalid"
+        KPM_INFO=
+        return 1
+    fi
+
+    echo "kprobe_manager_uid=$KPM_MANAGER_UID"
+    return 0
+}
+
+kpm_list_status() {
+    manager=$(manager_uid)
+    if [ -z "$manager" ]; then
+        echo "kpm_manager=missing"
+        return 1
+    fi
+    su "$manager" -c '/system/bin/truncate su module list'
+}
+
+caps_status() {
+    rc=0
+    echo "root_uid=$(id -u)"
+    echo "context=$(cat /proc/self/attr/current 2>/dev/null)"
+    echo "boot_completed=$(getprop sys.boot_completed)"
+    echo "locked=$(getprop ro.boot.flash.locked)"
+    echo "verified=$(getprop ro.boot.verifiedbootstate)"
+    echo "selinux=$(getenforce 2>&1)"
+    echo "control_prop=$(getprop ro.pftm10.control)"
+
+    [ "$(id -u)" = "0" ] || rc=1
+    [ "$(getprop sys.boot_completed)" = "1" ] || rc=1
+    [ "$(getprop ro.pftm10.control)" = "active" ] || rc=1
+    preload_status || rc=1
+    kprobe_status || rc=1
+
+    if [ "$rc" -eq 0 ]; then
+        echo "capabilities=ok"
+    else
+        echo "capabilities=failed"
+    fi
+    return "$rc"
 }
 
 health_status() {
@@ -106,6 +180,10 @@ case "$1" in
         echo "apd=$(/data/adb/apd -V 2>&1)"
         echo "kernel=$(uname -r)"
         ;;
+    caps)
+        caps_status
+        exit $?
+        ;;
     health)
         health_status
         exit $?
@@ -116,6 +194,18 @@ case "$1" in
         ;;
     kprobe)
         kprobe_status
+        exit $?
+        ;;
+    kpm-info)
+        kpm_info_status
+        rc=$?
+        if [ -n "$KPM_INFO" ]; then
+            printf '%s\n' "$KPM_INFO"
+        fi
+        exit "$rc"
+        ;;
+    kpm-list)
+        kpm_list_status
         exit $?
         ;;
     root)

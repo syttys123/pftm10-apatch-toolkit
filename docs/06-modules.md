@@ -20,6 +20,16 @@ getprop ro.pftm10.control
 cat /data/adb/pftm10-control/boot.log
 ```
 
+Host-side read-only acceptance:
+
+```powershell
+.\tools\check-device.ps1 -Adb C:\Android\platform-tools\adb.exe
+```
+
+The check requires the applied module version and verifies `health=ok`,
+`capabilities=ok`, KPM `1.1.1`, and the `post-fs-data` load event. It prints no
+device serial or ADB identity.
+
 ## KernelPatch KPMs
 
 The verified example is `kpms/pftm10-kprobe`.
@@ -39,13 +49,24 @@ debug: disabled
 Install through the APatch KPM page. A permanent installation requires a
 reboot; the temporary “load” action is useful for a pre-reboot test.
 
-Verify:
+Verify durable load state through the APatch manager UID:
+
+```sh
+manager_uid=$(stat -c %u /data/user/0/me.bmax.apatch)
+su "$manager_uid" -c "/system/bin/truncate su module info pftm10-kprobe"
+```
+
+The result includes `version=1.1.1`, `load_event=post-fs-data`, and
+`load_source=file`. `pftm10ctl health` and `pftm10ctl caps` use this check
+because `dmesg` may rotate the original load message out of the ring.
+
+Boot-log context only:
 
 ```sh
 su -c "dmesg | grep -i pftm10-kprobe"
 ```
 
-Expected cold-boot event:
+Expected cold-boot event when the ring still retains it:
 
 ```text
 pftm10-kprobe init, event: post-fs-data
