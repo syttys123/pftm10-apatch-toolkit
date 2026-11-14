@@ -49,3 +49,4 @@ if ($failures.Count -gt 0) {
 }
 
 Write-Output "PUBLIC_TREE_OK files=$($files.Count)"
+exit 0

@@ -64,3 +64,5 @@ $hash | Set-Content -LiteralPath ($kpm + '.sha256') -Encoding ascii
     Bytes = (Get-Item -LiteralPath $kpm).Length
     SHA256 = $hash
 } | Format-List
+
+exit 0

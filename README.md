@@ -53,6 +53,22 @@ The documented Windows toolchain uses Zig `0.14.1` with the
 `aarch64-freestanding` target. Do not publish build outputs containing debug
 paths.
 
+Build and verify all release assets:
+
+```powershell
+.\tools\build-all.ps1 `
+  -Zig C:\tools\zig.exe `
+  -KernelPatchRoot C:\src\KernelPatch
+```
+
+The `public-tree` GitHub Actions workflow runs the privacy guard on every push
+and pull request.
+
+## Releases
+
+Sanitized module and KPM builds are published under this repository's Releases
+page. Firmware and partition images are never release assets.
+
 ## Scope
 
 This is an experimental device-modification toolkit. It is not a generic OPPO,

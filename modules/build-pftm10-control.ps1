@@ -55,3 +55,5 @@ $hash | Set-Content -LiteralPath ($zipPath + '.sha256') -Encoding ascii
     Bytes = $size
     SHA256 = $hash
 } | Format-List
+
+exit 0
