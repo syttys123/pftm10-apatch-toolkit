@@ -54,11 +54,6 @@ jobs:
           git -C "$KERNEL_DIR" fetch --depth=1 origin "$KERNEL_BRANCH"
           git -C "$KERNEL_DIR" checkout --detach FETCH_HEAD
           test "$(git -C "$KERNEL_DIR" rev-parse HEAD)" = "$KERNEL_COMMIT"
-          # OPPO charger headers traverse the vendor symlink and expect the
-          # kernel tree at vendor/kernel-4.19.
-          test ! -e "$MODULE_DIR/vendor/kernel-4.19"
-          ln -s "$KERNEL_DIR" "$MODULE_DIR/vendor/kernel-4.19"
-          test -f "$MODULE_DIR/vendor/kernel-4.19/drivers/misc/mediatek/typec/tcpc/inc/tcpm.h"
 
       - name: Fetch pinned OPPO vendor modules
         shell: bash
@@ -73,6 +68,11 @@ jobs:
           ln -s "$MODULE_DIR/vendor" "$(dirname "$KERNEL_DIR")/vendor"
           test -f "$(dirname "$KERNEL_DIR")/vendor/oplus/kernel/oplus_performance/sched_assist/Kconfig"
           test -f "$(dirname "$KERNEL_DIR")/vendor/oplus/kernel/oplus_performance/klockopt/Kconfig"
+          # OPPO charger headers traverse the vendor symlink and expect the
+          # kernel tree at vendor/kernel-4.19.
+          test ! -e "$MODULE_DIR/vendor/kernel-4.19"
+          ln -s "$KERNEL_DIR" "$MODULE_DIR/vendor/kernel-4.19"
+          test -f "$MODULE_DIR/vendor/kernel-4.19/drivers/misc/mediatek/typec/tcpc/inc/tcpm.h"
 
       - name: Cache Android Clang
         uses: actions/cache@v4
