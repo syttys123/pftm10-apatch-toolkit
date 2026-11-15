@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.5.0 - 2026-11-15
+
+- document the self-built MT6833 APatch kernel boot path with the rebuilt
+  vendor module set
+- add the `wlan_drv_gen4m` EMI startup-order patch so Wi-Fi refreshes the WMT
+  exported EMI base before firmware download
+- record Wi-Fi, Bluetooth, camera, APatch health, and two-cold-boot acceptance
+  without publishing device identifiers or private logs
+
 ## v1.4.0 - 2026-11-14
 
 - bump `pftm10-kprobe` to 1.3.0 with explicit charger suspend recovery,

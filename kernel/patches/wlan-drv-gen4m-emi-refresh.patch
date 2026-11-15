@@ -1,0 +1,18 @@
+diff --git a/vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/chips/common/fw_dl.c b/vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/chips/common/fw_dl.c
+--- a/vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/chips/common/fw_dl.c
++++ b/vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/chips/common/fw_dl.c
+@@ -456,6 +456,14 @@ uint32_t wlanDownloadEMISection(IN struct ADAPTER
+ 	uint8_t __iomem *pucEmiBaseAddr = NULL;
+ 	uint32_t u4Offset = u4DestAddr & WIFI_EMI_ADDR_MASK;
+ 
++	if (!gConEmiPhyBaseFinal && gConEmiPhyBase) {
++		gConEmiPhyBaseFinal = gConEmiPhyBase;
++		gConEmiSizeFinal = gConEmiSize;
++		DBGLOG(INIT, INFO,
++		       "Refresh EMI info: base=0x%llx size=0x%llx\n",
++		       (uint64_t)gConEmiPhyBaseFinal, gConEmiSizeFinal);
++	}
++
+ 	if (!gConEmiPhyBaseFinal) {
+ 		DBGLOG(INIT, ERROR,
+ 		       "Consys emi memory address gConEmiPhyBaseFinal invalid\n");

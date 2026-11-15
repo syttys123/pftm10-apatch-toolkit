@@ -27,6 +27,7 @@ GitHub identity `syttys123`.
 ```text
 docs/                         Reproducible workflow and recovery notes
 kernel/                       Pinned MT6833 kernel cloud-build inputs
+kernel/patches/               Source patches required by rebuilt vendor modules
 kpms/pftm10-kprobe/           Bounded KPM with charger recovery and PD-gated 3A
 modules/pftm10-control/       Minimal APatch system module
 tools/                        Build, install, and privacy-validation helpers
