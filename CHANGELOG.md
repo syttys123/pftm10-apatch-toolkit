@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.5.1 - 2026-11-15
+
+- add public source for the rebuilt vendor module loader
+- whitelist the verified Nov 14 and Nov 15 self-built kernel timestamps
+- restore executable module entry points from `customize.sh` after APatch's
+  default `0644` extraction
+- use `resetprop -n` for post-fs-data status properties
+- add a Windows builder that accepts the ten matching vendor modules, verifies
+  their hashes, and emits a deterministic APatch ZIP layout
+
 ## v1.5.0 - 2026-11-15
 
 - document the self-built MT6833 APatch kernel boot path with the rebuilt

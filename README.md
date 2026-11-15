@@ -8,6 +8,7 @@ the OPPO PFTM10 / OP526D on the MediaTek MT6833 platform:
 - bootloader unlock and recovery on the MT6833 boot chain
 - APatch / KernelPatch root with reproducible verification checkpoints
 - APatch system modules with boot-stage hooks
+- an APatch vendor-module loader for self-built kernels
 - KernelPatch KPM examples and a read-only kernel probe
 - physical image de-bloat and rollback planning
 - public-tree privacy checks
@@ -30,6 +31,7 @@ kernel/                       Pinned MT6833 kernel cloud-build inputs
 kernel/patches/               Source patches required by rebuilt vendor modules
 kpms/pftm10-kprobe/           Bounded KPM with charger recovery and PD-gated 3A
 modules/pftm10-control/       Minimal APatch system module
+module-loader/                Rebuilt vendor-module loader source and builder
 tools/                        Build, install, and privacy-validation helpers
 ```
 
@@ -49,11 +51,13 @@ Set the KernelPatch source tree outside this repository:
 $env:PFTM10_KERNELPATCH_ROOT = "E:\src\KernelPatch"
 .\kpms\pftm10-kprobe\build.ps1
 .\modules\build-pftm10-control.ps1 -Zig C:\tools\zig.exe
+.\module-loader\build-module.ps1 -ModulesPath C:\path\to\rebuilt-modules
 ```
 
 The documented Windows toolchain uses Zig `0.14.1` with the
 `aarch64-freestanding` target. Do not publish build outputs containing debug
-paths.
+paths. The vendor `.ko` files are not part of this repository; supply a
+matching locally rebuilt set to the module loader.
 
 ## Build the Matching Kernel
 

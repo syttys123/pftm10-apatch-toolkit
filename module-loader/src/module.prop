@@ -1,0 +1,6 @@
+id=pftm10-kernel-modules
+name=PFTM10 Rebuilt Kernel Modules
+version=1.0.6
+versionCode=106
+author=syttys123
+description=Loads rebuilt 4.19.191+ vendor modules on the verified Nov 14 and Nov 15 2026 test kernels, including the WMT EMI startup-order fix for Wi-Fi.

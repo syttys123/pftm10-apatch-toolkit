@@ -99,6 +99,77 @@ su -c "/data/adb/modules/pftm10-control/bin/pftm10ctl battery-restrict restore"
 without writing an Android partition. The battery service continues to expose
 charging voltage, current, temperature, and health telemetry.
 
+### Rebuilt Vendor Module Loader
+
+The self-built kernel requires a matching set of rebuilt vendor modules. The
+public source for their APatch loader is under `module-loader/`; vendor `.ko`
+binaries are intentionally excluded.
+
+Supply the ten matching modules:
+
+```text
+trace_mmstat.ko
+connfem.ko
+wmt_drv.ko
+wmt_chrdev_wifi.ko
+bt_drv_connac1x.ko
+wlan_drv_gen4m.ko
+gps_drv.ko
+fmradio_drv_mt6631_6635.ko
+fpsgo.ko
+met.ko
+```
+
+Build and install:
+
+```powershell
+.\module-loader\build-module.ps1 -ModulesPath C:\path\to\rebuilt-modules
+& $ADB -s $DEVICE push .\module-loader\dist\pftm10-kernel-modules-*.zip /data/local/tmp/module.zip
+& $ADB -s $DEVICE shell "su -c '/data/adb/apd module install /data/local/tmp/module.zip'"
+```
+
+Reboot once to apply the staged update.
+
+The loader accepts only the verified self-built kernel timestamps:
+
+```text
+Sat Nov 14 21:43:18 CST 2026
+Sun Nov 15 17:28:38 CST 2026
+```
+
+Stock and unrelated kernels skip every `insmod`.
+
+APatch resets module files to `0644` during the default extraction. The
+module's `customize.sh` therefore uses `set_perm ... 0755` for:
+
+```text
+post-fs-data.sh
+service.sh
+bin/load-modules.sh
+```
+
+Without this installation hook, APatch stages the module but never executes
+its boot scripts. The loader also uses `/data/adb/ap/bin/resetprop -n` for
+post-fs-data status properties.
+
+Verify:
+
+```sh
+getprop pftm10.kernel_modules.state
+cat /data/adb/pftm10-kernel-modules/boot.log
+su -c "grep -E '^(wmt_drv|wmt_chrdev_wifi|wlan_drv_gen4m) ' /proc/modules"
+```
+
+Expected successful state:
+
+```text
+pftm10.kernel_modules.state=loaded
+WMT turn on WIFI success
+wlanProbe: probe success
+```
+
+Never remove `wlan_drv_gen4m` while Wi-Fi is enabled or scanning.
+
 ## KernelPatch KPMs
 
 The verified example is `kpms/pftm10-kprobe`.
