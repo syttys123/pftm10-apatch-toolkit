@@ -80,6 +80,10 @@ $hashFiles = @(
         Device = '/data/adb/modules/pftm10-control/kpm/pftm10-cpuhold.kpm'
     },
     @{
+        Local = 'E:\AI\pftm10\pftm10-apatch-toolkit\artifacts\pftm10-kprobe.kpm'
+        Device = '/data/adb/ap/kpm/pftm10-kprobe/pftm10-kprobe.kpm'
+    },
+    @{
         Local = 'E:\AI\pftm10\pftm10-apatch-toolkit\modules\pftm10-control\bin\boot-audit.sh'
         Device = '/data/adb/modules/pftm10-control/bin/boot-audit.sh'
     },

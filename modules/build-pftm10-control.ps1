@@ -67,12 +67,40 @@ if (Test-Path -LiteralPath $zipPath) {
     Remove-Item -LiteralPath $zipPath -Force
 }
 
-[IO.Compression.ZipFile]::CreateFromDirectory(
-    $stage,
-    $zipPath,
-    [IO.Compression.CompressionLevel]::Optimal,
-    $false
+Add-Type -AssemblyName System.IO.Compression
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$fixedTimestamp = [DateTimeOffset]::new(
+    1980, 1, 1, 0, 0, 0, [TimeSpan]::Zero
 )
+$archive = [IO.Compression.ZipFile]::Open(
+    $zipPath,
+    [IO.Compression.ZipArchiveMode]::Create
+)
+try {
+    Get-ChildItem -LiteralPath $stage -Recurse -File |
+        Sort-Object FullName |
+        ForEach-Object {
+            $relative = [IO.Path]::GetRelativePath(
+                $stage,
+                $_.FullName
+            ).Replace('\', '/')
+            $entry = $archive.CreateEntry(
+                $relative,
+                [IO.Compression.CompressionLevel]::Optimal
+            )
+            $entry.LastWriteTime = $fixedTimestamp
+            $input = [IO.File]::OpenRead($_.FullName)
+            $output = $entry.Open()
+            try {
+                $input.CopyTo($output)
+            } finally {
+                $output.Dispose()
+                $input.Dispose()
+            }
+        }
+} finally {
+    $archive.Dispose()
+}
 
 $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $zipPath).Hash
 $size = (Get-Item -LiteralPath $zipPath).Length

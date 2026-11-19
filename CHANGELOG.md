@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.6.7 - 2026-11-19
+
+- verify the installed persistent `pftm10-kprobe.kpm` SHA256 against the
+  released `1.4.6` payload in both runtime and device acceptance
+- close the release-drift gap where version and load-event metadata could pass
+  even if the KPM file under `/data/adb/ap/kpm` differed from the build
+- make the control-module ZIP byte-reproducible with sorted entries and a
+  fixed 1980-01-01 timestamp
+
 ## v1.6.6 - 2026-11-19
 
 - bump `pftm10-control` to `1.5.7` / versionCode `18`

@@ -71,6 +71,13 @@ if ($caps -notmatch '(?m)^kprobe_event=post-fs-data$') {
 if ($caps -notmatch '(?m)^kprobe_control=ok$') {
     throw "KPM control0 check failed"
 }
+$expectedKprobeSha = 'BE100AFDCA3CF8D861CA61FFE2E2A5F17795DC7BEBFB803E391B4EAAA677EB5B'
+$kprobeHash = (
+    & $Adb -s $Device shell 'su -c "sha256sum /data/adb/ap/kpm/pftm10-kprobe/pftm10-kprobe.kpm"' 2>&1
+) -join "`n"
+if ($kprobeHash -notmatch "^$([regex]::Escape($expectedKprobeSha.ToLowerInvariant()))\s") {
+    throw "Installed pftm10-kprobe.kpm does not match the released 1.4.6 payload"
+}
 if ($caps -notmatch '(?m)^battery_restrict=masked$') {
     throw "Battery restrict crash mask is not active"
 }
