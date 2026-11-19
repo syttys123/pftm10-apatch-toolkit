@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.6.8 - 2026-11-19
+
+- align the runtime gate with the installed and verified
+  `pftm10-agent` `0.4.6` module
+- require the `0.4.6` agent version during host-side runtime acceptance
+- document the read-only `bootcheck` command and its non-mutating boundary in
+  both local agent README copies
+
 ## v1.6.7 - 2026-11-19
 
 - verify the installed persistent `pftm10-kprobe.kpm` SHA256 against the
