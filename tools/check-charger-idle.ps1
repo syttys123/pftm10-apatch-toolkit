@@ -41,6 +41,8 @@ function Invoke-RootShell {
 function Get-ChargerState {
     $sentinel = Invoke-RootShell 'if [ -f /data/adb/pftm10-control/charge-3a.enabled ]; then echo present; else echo absent; fi'
     $watchdog = Invoke-RootShell 'pid=$(cat /data/adb/pftm10-control/charge-3a.pid 2>/dev/null); if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then echo running; else echo missing; fi'
+    $watchdogPid = Invoke-RootShell 'cat /data/adb/pftm10-control/charge-3a.pid 2>/dev/null'
+    $chargeLogLines = Invoke-RootShell 'wc -l < /data/adb/pftm10-control/charge-3a.log 2>/dev/null || echo 0'
     $lastLine = Invoke-RootShell 'tail -n 1 /data/adb/pftm10-control/charge-3a.log 2>/dev/null'
     $lastState = if ($lastLine -match 'state=([^ ]+)') {
         $matches[1]
@@ -51,6 +53,8 @@ function Get-ChargerState {
     return [ordered]@{
         sentinel = $sentinel
         watchdog = $watchdog
+        watchdog_pid = $watchdogPid
+        charge_log_lines = $chargeLogLines
         last_state = $lastState
         usb_online = Invoke-RootShell 'cat /sys/class/power_supply/usb/online 2>/dev/null'
         usb_type = Invoke-RootShell 'cat /sys/class/power_supply/usb/type 2>/dev/null'
@@ -95,8 +99,16 @@ $after = Get-ChargerState
 if ($after.watchdog -ne 'running') {
     throw "charge-3a watchdog stopped during the idle check"
 }
+if ($after.watchdog_pid -ne $before.watchdog_pid) {
+    throw "charge-3a watchdog PID changed during the idle check"
+}
 if ($after.last_state -eq 'pd_pending') {
     throw "watchdog entered pd_pending without a PD-capable USB source"
+}
+$logLinesBefore = [int]$before.charge_log_lines
+$logLinesAfter = [int]$after.charge_log_lines
+if ($logLinesAfter -ne $logLinesBefore) {
+    throw "charge-3a state log grew during a stable no-PD interval"
 }
 
 $callsAfter = [int]$after.charger_3a_calls
@@ -105,9 +117,11 @@ if ($callsAfter -gt $callsBefore) {
 }
 
 Write-Output (
-    "CHARGER_IDLE_OK seconds={0} charger_3a_calls_delta={1} state={2} usb_online={3} usb_type={4} usb_current_max={5} usb_voltage_max={6}" -f
+    "CHARGER_IDLE_OK seconds={0} charger_3a_calls_delta={1} charge_log_lines_delta={2} watchdog_pid={3} state={4} usb_online={5} usb_type={6} usb_current_max={7} usb_voltage_max={8}" -f
         $Seconds,
         ($callsAfter - $callsBefore),
+        ($logLinesAfter - $logLinesBefore),
+        $after.watchdog_pid,
         $after.last_state,
         $after.usb_online,
         $after.usb_type,

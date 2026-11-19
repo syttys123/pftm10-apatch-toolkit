@@ -21,7 +21,7 @@ $patterns = @(
 
 $files = Get-ChildItem -LiteralPath $resolvedRoot -Recurse -File |
     Where-Object {
-        $_.FullName -notmatch '[\\/]\.git[\\/]' -and
+        $_.FullName -notmatch '[\\/](?:\.git|artifacts|dist)[\\/]' -and
         $_.FullName -ne $PSCommandPath -and
         $_.Extension -notin @('.zip', '.kpm', '.png', '.jpg', '.jpeg', '.webp')
     }

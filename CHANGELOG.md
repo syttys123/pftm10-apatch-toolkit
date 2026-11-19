@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.6.10 - 2026-11-19
+
+- bump `pftm10-control` to `1.5.9` / versionCode `20`
+- add bounded test-only environment overrides to the charger watchdog while
+  preserving the production 30-second/5-second intervals
+- strengthen `tools/check-charger-idle.ps1` to require stable watchdog PID,
+  unchanged state-log length, and zero new KPM calls over the observation
+  window
+- add a phone-side fake-sysfs/fake-control branch test covering `no_input`,
+  `no_pd`, `full`, `applied`, and `pd_pending`
+- exclude generated `artifacts/` and `dist/` trees from public-source scanning
+  so the reported source-file count is stable across repeated builds
+
 ## v1.6.9 - 2026-11-19
 
 - bump `pftm10-control` to `1.5.8` / versionCode `19`

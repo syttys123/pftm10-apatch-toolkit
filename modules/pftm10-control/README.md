@@ -185,3 +185,13 @@ run with:
 
 The check waits 35 seconds and requires no new `charger-3a` KPM calls while
 the watchdog remains alive in `no_pd`, `no_input`, or `full` state.
+
+The watchdog branch logic can also be checked without a real PD source. This
+uses a temporary fake sysfs tree and fake control helper, then removes both:
+
+```powershell
+.\tools\test-charger-watchdog.ps1 -Adb C:\path\to\adb.exe
+```
+
+The test covers `no_input`, `no_pd`, `full`, `applied`, and `pd_pending`.
+Test-only environment variables do not change the production defaults.

@@ -42,7 +42,7 @@ $module = $modules | Where-Object { $_.id -eq 'pftm10-control' } | Select-Object
 if (-not $module) {
     throw "pftm10-control is not installed"
 }
-if ($module.version -ne '1.5.8' -or $module.versionCode -ne '19') {
+if ($module.version -ne '1.5.9' -or $module.versionCode -ne '20') {
     throw "Unexpected pftm10-control version"
 }
 if ($module.enabled -ne 'true' -or $module.update -ne 'false') {

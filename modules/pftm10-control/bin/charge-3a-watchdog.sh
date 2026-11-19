@@ -1,14 +1,17 @@
 #!/system/bin/sh
 
 MODDIR=${0%/*}
-STATE=/data/adb/pftm10-control
-LOG="$STATE/charge-3a.log"
-SENTINEL="$STATE/charge-3a.enabled"
-USB_PS=/sys/class/power_supply/usb
-BAT_PS=/sys/class/power_supply/battery
-SLOW_INTERVAL=30
-FAST_INTERVAL=5
+STATE=${PFTM10_CONTROL_STATE:-/data/adb/pftm10-control}
+LOG=${PFTM10_CHARGE_LOG:-"$STATE/charge-3a.log"}
+SENTINEL=${PFTM10_CHARGE_SENTINEL:-"$STATE/charge-3a.enabled"}
+USB_PS=${PFTM10_USB_PS:-/sys/class/power_supply/usb}
+BAT_PS=${PFTM10_BAT_PS:-/sys/class/power_supply/battery}
+CONTROLCTL=${PFTM10_CONTROLCTL:-"$MODDIR/pftm10ctl"}
+SLOW_INTERVAL=${PFTM10_CHARGE_SLOW_INTERVAL:-30}
+FAST_INTERVAL=${PFTM10_CHARGE_FAST_INTERVAL:-5}
+MAX_ITERATIONS=${PFTM10_CHARGE_MAX_ITERATIONS:-0}
 LAST_STATE=
+ITERATIONS=0
 
 mkdir -p "$STATE"
 
@@ -21,6 +24,7 @@ read_value() {
 }
 
 while [ -f "$SENTINEL" ]; do
+    ITERATIONS=$((ITERATIONS + 1))
     usb_online=$(read_value "$USB_PS/online")
     usb_type=$(read_value "$USB_PS/type")
     usb_current_max=$(read_value "$USB_PS/current_max")
@@ -59,7 +63,7 @@ while [ -f "$SENTINEL" ]; do
         current_state=full
         sleep_seconds=$SLOW_INTERVAL
     else
-        output=$("$MODDIR/pftm10ctl" charge-3a apply 2>&1)
+        output=$("$CONTROLCTL" charge-3a apply 2>&1)
         case "$output" in
             *charger_3a_applied=1*)
                 current_state=applied
@@ -74,6 +78,11 @@ while [ -f "$SENTINEL" ]; do
     if [ "$current_state" != "$LAST_STATE" ]; then
         echo "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null) state=$current_state usb_online=$usb_online usb_type=$usb_type usb_current_max=$usb_current_max usb_voltage_max=$usb_voltage_max battery_status=$battery_status battery_capacity=$battery_capacity output=$output" >> "$LOG"
         LAST_STATE=$current_state
+    fi
+
+    if [ "$MAX_ITERATIONS" -gt 0 ] &&
+        [ "$ITERATIONS" -ge "$MAX_ITERATIONS" ]; then
+        break
     fi
 
     sleep "$sleep_seconds"
