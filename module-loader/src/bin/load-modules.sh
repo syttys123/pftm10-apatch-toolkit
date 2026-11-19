@@ -10,6 +10,8 @@ STATE=/data/adb/pftm10-kernel-modules
 LOG="$STATE/boot.log"
 EXPECTED_NOV14='Sat Nov 14 21:43:18 CST 2026'
 EXPECTED_NOV15='Sun Nov 15 17:28:38 CST 2026'
+EXPECTED_NOV16='Mon Nov 16 08:35:50 CST 2026'
+EXPECTED_NOV17='Tue Nov 17 13:24:56 CST 2026'
 INSMOD=/system/bin/insmod
 RESETPROP=/data/adb/ap/bin/resetprop
 
@@ -31,9 +33,12 @@ log_line "---"
 log_line "event=$STAGE"
 log_line "time_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)"
 log_line "kernel=$(uname -v 2>/dev/null)"
-log_line "expected_kernels=nov14,nov15"
+log_line "expected_kernels=nov14,nov15,nov16,nov17"
 
-if ! grep -Fq "$EXPECTED_NOV14" /proc/version 2>/dev/null && ! grep -Fq "$EXPECTED_NOV15" /proc/version 2>/dev/null; then
+if ! grep -Fq "$EXPECTED_NOV14" /proc/version 2>/dev/null && \
+   ! grep -Fq "$EXPECTED_NOV15" /proc/version 2>/dev/null && \
+   ! grep -Fq "$EXPECTED_NOV16" /proc/version 2>/dev/null && \
+   ! grep -Fq "$EXPECTED_NOV17" /proc/version 2>/dev/null; then
     log_line "result=skip-kernel-mismatch"
     set_state skipped
     exit 0

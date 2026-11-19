@@ -8,6 +8,8 @@ Safety gate:
 ```text
 Sat Nov 14 21:43:18 CST 2026
 Sun Nov 15 17:28:38 CST 2026
+Mon Nov 16 08:35:50 CST 2026
+Tue Nov 17 13:24:56 CST 2026
 ```
 
 The loader skips every `insmod` unless `/proc/version` contains one of those
@@ -27,7 +29,7 @@ State property:
 getprop pftm10.kernel_modules.state
 ```
 
-Version 1.0.6 uses `resetprop -n` for status properties during post-fs-data,
+Version 1.0.7 uses `resetprop -n` for status properties during post-fs-data,
 avoiding the property-service deadlock documented by APatch.
 
 Do not package this module with Windows `Compress-Archive`; it stores the shell

@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.6.4 - 2026-11-19
+
+- publish the current `pftm10-kernel-modules` 1.0.7 loader instead of the
+  stale 1.0.6 source
+- accept the verified Nov 16 and Nov 17 self-built kernel timestamps, matching
+  the already installed module and the current `#5` kernel
+- update the public module documentation to list all four accepted kernel
+  timestamps
+
 ## v1.6.3 - 2026-11-18
 
 - diagnose the boot-time `Android 系统` / internal-problem dialog as

@@ -20,6 +20,11 @@ if ($LASTEXITCODE -ne 0) {
     throw "Public tree validation failed"
 }
 
+& (Join-Path $PSScriptRoot 'verify-module-loader.ps1')
+if ($LASTEXITCODE -ne 0) {
+    throw "Module loader verification failed"
+}
+
 & (Join-Path $repoRoot 'modules\build-pftm10-control.ps1') -Zig $Zig -OutputDirectory $outputRoot
 if ($LASTEXITCODE -ne 0) {
     throw "System module build failed"
@@ -61,7 +66,7 @@ $artifacts = Get-ChildItem -LiteralPath $outputRoot -File |
     }
 
 $manifest = [ordered]@{
-    release = 'v1.6.3'
+    release = 'v1.6.4'
     builder = 'syttys123'
     artifacts = $artifacts
 }

@@ -52,6 +52,8 @@ The loader accepts only these verified self-built kernel timestamps:
 ```text
 Sat Nov 14 21:43:18 CST 2026
 Sun Nov 15 17:28:38 CST 2026
+Mon Nov 16 08:35:50 CST 2026
+Tue Nov 17 13:24:56 CST 2026
 ```
 
 Stock and unrelated kernels skip every `insmod`.
