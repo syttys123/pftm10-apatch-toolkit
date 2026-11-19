@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.6.9 - 2026-11-19
+
+- bump `pftm10-control` to `1.5.8` / versionCode `19`
+- make the armed charger watchdog read ordinary USB power-supply sysfs before
+  calling the kernel adapter
+- back off to 30-second polling for `no_input`, `no_pd`, and `full` states
+  instead of issuing a KPM `charger-3a` call every five seconds
+- retry at five seconds only for `USB_PD`, `USB_PD_DRP`, or a sysfs limit of at
+  least 3A / 9V
+- skip the boot-time 15-call charger retry loop when sysfs already proves there
+  is no PD-capable source, while still starting the watchdog for later
+  hot-plug detection
+- add `tools/check-charger-idle.ps1` to verify the watchdog and require zero
+  new `charger-3a` KPM calls over a 35-second non-PD window
+
 ## v1.6.8 - 2026-11-19
 
 - align the runtime gate with the installed and verified

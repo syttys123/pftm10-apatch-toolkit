@@ -22,9 +22,10 @@ Files:
   `pftm10-cpuhold` KPM.
 - `bin/cpu-max-watchdog.sh`: reapplies the independent CPUHOLD policy while its
   sentinel exists and rolls it back on thermal or battery limits.
-- `bin/charge-3a-watchdog.sh`: while explicitly armed and while the live PD
-  contract remains at least `5V/3000mA`, reapplies the gated 3A input request
-  after OPPO charger policy rewrites it.
+- `bin/charge-3a-watchdog.sh`: while explicitly armed, polls ordinary USB
+  power-supply sysfs first, skips KPM calls when no PD-capable source is
+  present or the battery is full, and reapplies the gated 3A input request
+  after OPPO charger policy rewrites it when PD becomes available.
 - `post-fs-data.sh`: optionally masks the known CR.39
   `BatteryRestrictPlugin.apk` that crashes when GMS is absent.
 - `vintf/compatibility_matrix.5.xml`: systemless compatibility-matrix override
@@ -92,6 +93,11 @@ state-changing commands are charger suspend recovery and PD-gated AICR control.
 `charger-3a` refuses to write 3A unless `tcpm_inquire_pd_contract()` confirms a
 `5V/3000mA` contract. `charge-3a disable` stops the watchdog and restores AICL
 plus the 500mA request.
+
+The watchdog uses a 30-second idle interval for `no_input`, `no_pd`, and
+`full` states. It switches to 5-second retries only when the USB supply reports
+`USB_PD` / `USB_PD_DRP`, at least 3A, or at least 9V. This keeps a standard
+USB-CDP port from triggering a KPM call every five seconds.
 
 `cpu-max` is intentionally opt-in. `cpu-max enable` creates
 `/data/adb/pftm10-control/cpu-max.enabled`, loads the separate
@@ -169,3 +175,13 @@ and grants OShare background location again. Remove the file and reboot to
 re-enable the privacy policy.
 
 Host-side acceptance can be run with `tools/check-device.ps1`.
+
+When `charge-3a` is armed on a non-PD USB source, the idle regression can be
+run with:
+
+```powershell
+.\tools\check-charger-idle.ps1 -Adb C:\path\to\adb.exe
+```
+
+The check waits 35 seconds and requires no new `charger-3a` KPM calls while
+the watchdog remains alive in `no_pd`, `no_input`, or `full` state.

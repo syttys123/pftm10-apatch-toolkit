@@ -82,7 +82,7 @@ $artifacts = Get-ChildItem -LiteralPath $outputRoot -File |
     }
 
 $manifest = [ordered]@{
-    release = 'v1.6.8'
+    release = 'v1.6.9'
     builder = 'syttys123'
     artifacts = $artifacts
 }

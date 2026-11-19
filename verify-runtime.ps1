@@ -37,7 +37,7 @@ Add-Check 'modem' ($props -match '(?m)^ready$') 'md1=ready'
 
 $modules = Invoke-RootShell '/data/adb/apd module list'
 foreach ($item in @(
-    @('pftm10-control', '1.5.7'),
+    @('pftm10-control', '1.5.8'),
     @('pftm10-agent', '0.4.6'),
     @('pftm10-kernel-modules', '1.0.7')
 )) {
@@ -198,5 +198,5 @@ if ($failures.Count -ne 0) {
     exit 1
 }
 
-Write-Output "PFTM10_RUNTIME_OK control=1.5.7 agent=0.4.6 kernel_modules=1.0.7 cpu_max=$cpuMaxMode tee=running md1=ready"
+Write-Output "PFTM10_RUNTIME_OK control=1.5.8 agent=0.4.6 kernel_modules=1.0.7 cpu_max=$cpuMaxMode tee=running md1=ready"
 exit 0

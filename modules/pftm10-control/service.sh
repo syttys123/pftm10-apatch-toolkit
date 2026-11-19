@@ -100,18 +100,40 @@ if [ -f "$STATE/charge-3a.enabled" ]; then
 
     charger_3a=enabled
     charger_3a_rc=1
-    i=0
-    while [ "$i" -lt 15 ]; do
-        charger_3a_output=$("$MODDIR/bin/pftm10ctl" charge-3a apply 2>&1)
-        case "$charger_3a_output" in
-            *charger_3a_applied=1*)
-                charger_3a_rc=0
-                break
-                ;;
-        esac
-        sleep 2
-        i=$((i + 1))
-    done
+    usb_online=$(cat /sys/class/power_supply/usb/online 2>/dev/null)
+    usb_type=$(cat /sys/class/power_supply/usb/type 2>/dev/null)
+    usb_current_max=$(cat /sys/class/power_supply/usb/current_max 2>/dev/null)
+    usb_voltage_max=$(cat /sys/class/power_supply/usb/voltage_max 2>/dev/null)
+    case "$usb_current_max" in
+        ''|*[!0-9]*) usb_current_max=0 ;;
+    esac
+    case "$usb_voltage_max" in
+        ''|*[!0-9]*) usb_voltage_max=0 ;;
+    esac
+    pd_candidate=0
+    case "$usb_type" in
+        USB_PD|USB_PD_DRP) pd_candidate=1 ;;
+    esac
+    if [ "$usb_current_max" -ge 3000000 ] ||
+        [ "$usb_voltage_max" -ge 9000000 ]; then
+        pd_candidate=1
+    fi
+    if [ "$usb_online" = "1" ] && [ "$pd_candidate" = "1" ]; then
+        i=0
+        while [ "$i" -lt 15 ]; do
+            charger_3a_output=$("$MODDIR/bin/pftm10ctl" charge-3a apply 2>&1)
+            case "$charger_3a_output" in
+                *charger_3a_applied=1*)
+                    charger_3a_rc=0
+                    break
+                    ;;
+            esac
+            sleep 2
+            i=$((i + 1))
+        done
+    else
+        charger_3a_output="deferred: usb_online=$usb_online usb_type=$usb_type usb_current_max=$usb_current_max usb_voltage_max=$usb_voltage_max"
+    fi
 
     setsid /system/bin/sh "$MODDIR/bin/charge-3a-watchdog.sh" \
         >/dev/null 2>&1 &
