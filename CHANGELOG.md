@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.6.6 - 2026-11-19
+
+- bump `pftm10-control` to `1.5.7` / versionCode `18`
+- add `cpu-max replay` for boot-time recovery without deleting the opt-in
+  sentinel on a transient KPM load failure
+- make `cpu-max disable` remove the sentinel before stopping the watchdog,
+  wait for watchdog exit, and retry KPM unload until the module is absent
+- keep the watchdog running during a failed replay so it can retry loading and
+  applying the separate CPUHOLD KPM
+
 ## v1.6.5 - 2026-11-19
 
 - add the separate `pftm10-cpuhold` 0.2.2 KPM and select it through a bounded

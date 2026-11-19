@@ -79,10 +79,12 @@ charger_unsuspend_rc=$?
 
 if [ -f "$STATE/cpu-max.enabled" ]; then
     cpu_max=enabled
-    cpu_max_output=$("$MODDIR/bin/pftm10ctl" cpu-max enable 2>&1)
+    cpu_max_output=$("$MODDIR/bin/pftm10ctl" cpu-max replay 2>&1)
     cpu_max_rc=$?
     case "$cpu_max_output" in
-        *cpu_max=armed*) ;;
+        *cpu_max=armed*)
+            [ "$cpu_max_rc" -eq 0 ] || cpu_max=retry_pending
+            ;;
         *) cpu_max=enable_failed ;;
     esac
 fi

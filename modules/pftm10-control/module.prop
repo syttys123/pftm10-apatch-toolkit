@@ -1,6 +1,6 @@
 id=pftm10-control
 name=PFTM10 Control Module
-version=1.5.6
-versionCode=17
+version=1.5.7
+versionCode=18
 author=syttys123
 description=Local APatch control matrix with charger recovery, PD-gated 3A input control, reversible CPU policy control, SOC reconciliation, KPM control, privacy AppOps, crash auditing, and a reversible DEBUG_FS VINTF override.

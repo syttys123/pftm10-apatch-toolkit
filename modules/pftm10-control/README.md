@@ -73,6 +73,7 @@ pftm10ctl cpu-max status
 pftm10ctl cpu-max enable
 pftm10ctl cpu-max disable
 pftm10ctl cpu-max apply
+pftm10ctl cpu-max replay
 pftm10ctl root
 pftm10ctl bootlog
 pftm10ctl crashlog
@@ -98,7 +99,9 @@ plus the 500mA request.
 the watchdog. `cpu-max disable` removes the sentinel, disables the hook,
 unloads the KPM, and restores the normal OPPO policy. The watchdog rolls back
 at `70C` thermal, `45C` battery, or `5%` battery. The default state is
-disabled.
+disabled. `cpu-max replay` is the boot hook: it keeps the sentinel and leaves
+the watchdog retrying if the first KPM load in a boot is transiently
+unavailable.
 
 On the current standard USB host connection, the hidden suspend state leaves
 MT6360 at `IBUS=0 / IBAT=0` while `CHG_EN=1`. `service.sh` records
