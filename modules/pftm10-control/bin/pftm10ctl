@@ -2,12 +2,13 @@
 
 STATE=/data/adb/pftm10-control
 LOG="$STATE/boot.log"
+CRASH_LOG="$STATE/crash-audit.log"
 BATTERY_RESTRICT_APK=/my_bigball/plugin/BatteryRestrictPlugin/BatteryRestrictPlugin.apk
 BATTERY_RESTRICT_MASK="$STATE/battery-restrict-disabled.apk"
 CHARGE_3A_SENTINEL="$STATE/charge-3a.enabled"
 
 usage() {
-    echo "usage: pftm10ctl {status|caps|health|preload|kprobe|kprobe-ctl|kpm-info|kpm-list|battery-restrict|charge-3a|root|bootlog|kpm|enforcing|permissive}"
+    echo "usage: pftm10ctl {status|caps|health|preload|kprobe|kprobe-ctl|kpm-info|kpm-list|battery-restrict|charge-3a|root|bootlog|crashlog|kpm|enforcing|permissive}"
 }
 
 if [ "$(id -u)" != "0" ]; then
@@ -39,7 +40,7 @@ preload_status() {
 
 kprobe_status() {
     kprobe=/data/adb/ap/kpm/pftm10-kprobe/pftm10-kprobe.kpm
-    expected=c962a36c65dc8fc560d7b08f19777ad6b00784cc3cea843e836731d5b1433594
+    expected=be100afdca3cf8d861ca61ffe2e2a5f17795dc7bebfb803e391b4eaaa677eb5b
 
     if [ ! -f "$kprobe" ]; then
         echo "kprobe_file=missing"
@@ -417,6 +418,14 @@ case "$1" in
         ;;
     bootlog)
         tail -n 40 "$LOG" 2>/dev/null
+        ;;
+    crashlog)
+        echo "bootreason=$(getprop ro.boot.bootreason)"
+        echo "bootreason_history=$(getprop persist.sys.boot.reason.history | tr '\n' ';' | sed 's/;*$//')"
+        echo "pstore_console_size=$(stat -c %s /sys/fs/pstore/console-ramoops-0 2>/dev/null)"
+        echo "pstore_console_mtime=$(stat -c %y /sys/fs/pstore/console-ramoops-0 2>/dev/null)"
+        echo "pstore_saved_sha256=$(cat "$STATE/pstore.sha256" 2>/dev/null)"
+        tail -n 160 "$CRASH_LOG" 2>/dev/null
         ;;
     kpm)
         dmesg | grep -Ei "pftm10-kprobe|kpm hello" | tail -n 30

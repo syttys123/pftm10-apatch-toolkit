@@ -1,5 +1,58 @@
 # Changelog
 
+## v1.6.3 - 2026-11-18
+
+- diagnose the boot-time `Android 系统` / internal-problem dialog as
+  `VintfObject.verifyWithoutAvb()` returning `1`, not a UID-data error or a
+  package-crash dialog
+- prove the exact mismatch: diagnostic kernel `#5` has
+  `CONFIG_DEBUG_FS=y`, while framework compatibility matrix level 5 requires
+  `CONFIG_DEBUG_FS=n`
+- bump `pftm10-control` to `1.5.5` / versionCode `16` with a hash-guarded,
+  reversible bind mount of a level-5 compatibility matrix that removes only
+  that one kernel-config requirement
+- record the original matrix hash, patched matrix hash, mount result, and
+  return code in the boot log; add the
+  `/data/adb/pftm10-control/vintf-debugfs-allow.disabled` rollback sentinel
+- verify after a normal reboot:
+  `isBuildConsistent=true`, no `Vendor interface is incompatible` log, no
+  system-error window, and all runtime/device checks passing
+- prefer `charge_counter` over stale `charge_now` when reconciling OPPO UI
+  battery state during host-side device acceptance
+
+## v1.6.2 - 2026-11-18
+
+- correct the MT6360 `mt6360_set_aicr` fallback offset to `0x969618` for the
+  current self-built `#5` kernel
+- replace the unsafe cross-module charger invocation with a direct call that
+  preserves the verified `charger-3a` control name and keeps the hooked value
+  across later OPPO policy writes
+- retain a bounded `charger-500-direct` restore path and return the input limit
+  to `500mA` immediately when 3A mode is disabled
+- bump `pftm10-kprobe` to `1.4.4` and `pftm10-control` to `1.5.3`
+- verify post-reboot `post-fs-data` loading, watchdog recovery, sustained
+  `3000mA` input ceiling, and measurable `battery_rm` growth
+
+## v1.6.1 - 2026-11-16
+
+- serialize every `pftm10-kpmctl` control0 call with a root-owned cross-process
+  file lock
+- document the `sym:l_ctx` plus `u32:mobicore_ready` concurrent-query panic in
+  the private campaign record and keep concurrent KPM queries prohibited
+- bump `pftm10-control` to 1.5.2 without changing the verified
+  `pftm10-kprobe` 1.3.0 payload
+
+## v1.6.0 - 2026-11-16
+
+- bump `pftm10-control` to 1.5.1 with a durable boot and pstore crash audit
+- record boot reason, full boot-reason history, kernel banner, boot ID, and
+  pstore hashes without copying the complete ramoops buffer
+- classify changed pstore data as `panic`, warning-only, or `other`, and rerun
+  the audit after boot completion without duplicating an unchanged snapshot
+- add `pftm10ctl crashlog` and bounded 512 KiB audit-log rotation
+- extend host-side device acceptance to require the post-boot crash audit
+- retain the `#4` SCP suspend fix evidence and `boot_b` rollback boundary
+
 ## v1.5.1 - 2026-11-15
 
 - add public source for the rebuilt vendor module loader

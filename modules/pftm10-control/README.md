@@ -7,6 +7,10 @@ Files:
 
 - `post-fs-data.sh`: records the early boot stage.
 - `service.sh`: waits for `sys.boot_completed`, then records the late stage.
+- `bin/boot-audit.sh`: records boot reason history at early boot and after
+  `sys.boot_completed`, hashes the current pstore console buffer, classifies
+  its contents as `panic`, `warning`, or `other`, and saves only a bounded
+  excerpt when the buffer changes.
 - `system.prop`: sets `ro.pftm10.control=active`.
 - `bin/pftm10ctl`: root-only capability matrix, health, preload, manager
   supercommand, KPM integrity/load verification, root context, boot-log, KPM
@@ -19,6 +23,9 @@ Files:
   after OPPO charger policy rewrites it.
 - `post-fs-data.sh`: optionally masks the known CR.39
   `BatteryRestrictPlugin.apk` that crashes when GMS is absent.
+- `vintf/compatibility_matrix.5.xml`: systemless compatibility-matrix override
+  that removes only the framework level-5 `CONFIG_DEBUG_FS=n` kernel
+  requirement while the diagnostic kernel intentionally exposes debugfs.
 - `service.sh`: after `sys.boot_completed`, reapplies the camera location
   AppOps denial, fixes the OShare background-location permission as denied,
   and clears the hidden kernel charger suspend state.
@@ -30,6 +37,17 @@ policy, or kernel memory.
 `service.sh` appends a `health=ok` or `health=failed` result to
 `/data/adb/pftm10-control/boot.log` after every boot. The current control
 surface is available through:
+
+`boot-audit.sh` keeps `/data/adb/pftm10-control/crash-audit.log` separate from
+the larger IPC control audit. Every boot records `ro.boot.bootreason`, the
+complete `persist.sys.boot.reason.history`, kernel banner, boot ID, and the
+current pstore hash. A changed pstore hash records a bounded keyword-filtered
+snapshot, distinguishing a new panic from the unchanged old ramoops export.
+The pstore verdict is `panic` for panic signatures, `warning` for
+warning-only shutdown data, and `other` when neither is present. Running the
+audit again after boot completion captures the settled boot-reason history
+without duplicating a snapshot when the pstore hash is unchanged. The audit log
+rotates at 512 KiB to `crash-audit.log.1`.
 
 ```text
 pftm10ctl status
@@ -49,6 +67,7 @@ pftm10ctl charge-3a disable
 pftm10ctl charge-3a apply
 pftm10ctl root
 pftm10ctl bootlog
+pftm10ctl crashlog
 pftm10ctl kpm
 pftm10ctl enforcing
 pftm10ctl permissive
@@ -76,6 +95,29 @@ from calling `getApplicationEnabledSetting("com.google.android.gms")` on ROMs
 where GMS is not installed. The rest of `com.oplus.battery` stays active.
 `restore` unmounts the override immediately. The mask is applied during
 `post-fs-data` and does not modify an Android partition.
+
+## DEBUG_FS VINTF Compatibility Override
+
+The current diagnostic kernel is built with `CONFIG_DEBUG_FS=y`. Android 13
+framework compatibility matrix level 5 requires `CONFIG_DEBUG_FS=n`, which
+makes `VintfObject.verifyWithoutAvb()` return `1` and produces the boot-time
+`Android 系统` / “internal problem” dialog.
+
+`post-fs-data.sh` verifies both the stock matrix hash and the prepared patched
+matrix hash, then bind-mounts the patched copy over
+`/system/etc/vintf/compatibility_matrix.5.xml`. The override removes only the
+`CONFIG_DEBUG_FS` requirement from the applicable `4.19.110` kernel node. It
+does not change SELinux, boot, TEE, RPMB, modem, or any Android partition.
+
+To disable the override without uninstalling the module:
+
+```sh
+su -c "touch /data/adb/pftm10-control/vintf-debugfs-allow.disabled"
+```
+
+Reboot afterward. The boot log records
+`vintf_debugfs_override=mounted|disabled|unexpected_source|failed` and both
+input hashes.
 
 ## Privacy Policy Replay
 

@@ -6,13 +6,16 @@ LOG="$STATE/boot.log"
 
 mkdir -p "$STATE"
 chmod 0755 "$MODDIR/bin/pftm10ctl" "$MODDIR/bin/pftm10-kpmctl" \
-    "$MODDIR/bin/charge-3a-watchdog.sh" 2>/dev/null
+    "$MODDIR/bin/charge-3a-watchdog.sh" "$MODDIR/bin/boot-audit.sh" 2>/dev/null
 
 i=0
 while [ "$(getprop sys.boot_completed)" != "1" ] && [ "$i" -lt 60 ]; do
     sleep 2
     i=$((i + 1))
 done
+
+boot_audit_output=$("$MODDIR/bin/boot-audit.sh" boot_completed 2>&1)
+boot_audit_rc=$?
 
 camera_fine_rc=99
 camera_coarse_rc=99
@@ -25,6 +28,8 @@ charger_3a=disabled
 charger_3a_output="not_run"
 charger_3a_rc=99
 charger_3a_watchdog_pid=none
+soc_reconcile_output="not_run"
+soc_reconcile_rc=99
 
 if [ ! -f "$STATE/privacy.disabled" ]; then
     privacy_policy=enabled
@@ -98,12 +103,31 @@ if [ -f "$STATE/charge-3a.enabled" ]; then
     echo "$charger_3a_watchdog_pid" > "$STATE/charge-3a.pid"
 fi
 
+soc_reconcile_rc=1
+i=0
+while [ "$i" -lt 6 ]; do
+    soc_reconcile_output=$("$MODDIR/bin/pftm10ctl" kprobe-ctl soc-reconcile 2>&1)
+    command_rc=$?
+    if [ "$command_rc" -eq 0 ]; then
+        case "$soc_reconcile_output" in
+            *soc_reconcile_applied=1*|*reason=already_aligned*)
+                soc_reconcile_rc=0
+                break
+                ;;
+        esac
+    fi
+    sleep 5
+    i=$((i + 1))
+done
+
 {
     echo "event=service"
     echo "time_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)"
     echo "boot_completed=$(getprop sys.boot_completed)"
     echo "build=$(getprop ro.build.display.id)"
     echo "control_prop=$(getprop ro.pftm10.control)"
+    echo "boot_audit_rc=$boot_audit_rc"
+    printf '%s\n' "$boot_audit_output"
     echo "selinux=$(getenforce 2>&1)"
     echo "apd=$(/data/adb/apd -V 2>&1)"
     echo "kernel=$(uname -a 2>&1)"
@@ -119,6 +143,8 @@ fi
     echo "charger_3a_rc=$charger_3a_rc"
     echo "charger_3a_output=$charger_3a_output"
     echo "charger_3a_watchdog_pid=$charger_3a_watchdog_pid"
+    echo "soc_reconcile_rc=$soc_reconcile_rc"
+    echo "soc_reconcile=$soc_reconcile_output"
 } >> "$LOG"
 
 "$MODDIR/bin/pftm10ctl" health >> "$LOG" 2>&1

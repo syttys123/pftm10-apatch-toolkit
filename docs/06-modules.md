@@ -27,10 +27,56 @@ Host-side read-only acceptance:
 ```
 
 The check requires the applied module version and verifies `health=ok`,
-`capabilities=ok`, KPM `1.3.0`, the `post-fs-data` load event, boot-time
+`capabilities=ok`, KPM `1.4.6`, the `post-fs-data` load event, boot-time
 charger suspend recovery, the gated 3A control surface, the CR.39 battery
-restrict crash mask, and the privacy policy. It prints no device serial or ADB
-identity.
+restrict crash mask, the DEBUG_FS VINTF compatibility override, and the
+privacy policy. It prints no device serial or ADB identity.
+
+### DEBUG_FS VINTF Compatibility Override
+
+Kernel `#5` intentionally enables `CONFIG_DEBUG_FS` for Trustonic TEE and
+driver diagnostics. Framework compatibility matrix level 5 requires
+`CONFIG_DEBUG_FS=n`, so the stock `VintfObject.verifyWithoutAvb()` result is
+`1`. Android reports that as:
+
+```text
+Build: Vendor interface is incompatible, error=1
+ActivityTaskManager: Build fingerprint is not consistent, warning user
+```
+
+The second line is misleading for this path: the problem is the kernel
+configuration, not the fingerprint strings. `pftm10-control` 1.5.5 carries a
+prepared matrix with only the level-5 `CONFIG_DEBUG_FS` requirement removed
+from the applicable 4.19.110 kernel node. At `post-fs-data` it checks both
+hashes before bind-mounting the prepared file over:
+
+```text
+/system/etc/vintf/compatibility_matrix.5.xml
+```
+
+Verified hashes:
+
+```text
+stock matrix   C3F5339CB6FE1C3FEC3C80F34845ABC80E460E75132E8C167B3ED4C2970895A2
+patched matrix 961A5FF2E4B833EB7C7AC229AB8547FAE49B61C0856D0C56446B03F6A322576A
+```
+
+An unexpected stock matrix is never replaced. The boot log records:
+
+```text
+vintf_debugfs_override=mounted
+vintf_debugfs_override_rc=0
+```
+
+Rollback without uninstalling:
+
+```sh
+su -c "touch /data/adb/pftm10-control/vintf-debugfs-allow.disabled"
+```
+
+Reboot afterward. The stock matrix and the original system dialog behavior
+return. The override does not write a partition and does not change SELinux,
+boot, TEE, RPMB, modem, or kernel memory.
 
 `pftm10-control` 1.4.0 calls the official
 `oplus_chg_unsuspend_charger()` kernel function after `sys.boot_completed`.
@@ -196,7 +242,7 @@ manager_uid=$(stat -c %u /data/user/0/me.bmax.apatch)
 su "$manager_uid" -c "/system/bin/truncate su module info pftm10-kprobe"
 ```
 
-The result includes `version=1.3.0`, `load_event=post-fs-data`, and
+The result includes `version=1.4.6`, `load_event=post-fs-data`, and
 `load_source=file`. `pftm10ctl health` and `pftm10ctl caps` use this check
 because `dmesg` may rotate the original load message out of the ring.
 
