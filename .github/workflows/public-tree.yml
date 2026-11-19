@@ -16,3 +16,6 @@ jobs:
       - name: Validate public tree
         shell: pwsh
         run: ./tools/validate-public-tree.ps1
+      - name: Verify kernel module loader
+        shell: pwsh
+        run: ./tools/verify-module-loader.ps1

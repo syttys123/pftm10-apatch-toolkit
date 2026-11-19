@@ -8,6 +8,8 @@
   the already installed module and the current `#5` kernel
 - update the public module documentation to list all four accepted kernel
   timestamps
+- run the module-loader version and whitelist verifier in the public-tree
+  GitHub Actions workflow
 
 ## v1.6.3 - 2026-11-18
 
