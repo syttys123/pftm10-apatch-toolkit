@@ -10,6 +10,7 @@ VINTF_PATCHED_SHA=961a5ff2e4b833eb7c7ac229ab8547fae49b61c0856d0c56446b03f6a32257
 
 mkdir -p "$STATE"
 chmod 0755 "$MODDIR/bin/pftm10ctl" "$MODDIR/bin/pftm10-kpmctl" \
+    "$MODDIR/bin/pftm10-cpuholdctl" "$MODDIR/bin/cpu-max-watchdog.sh" \
     "$MODDIR/bin/boot-audit.sh" 2>/dev/null
 
 boot_audit_output=$("$MODDIR/bin/boot-audit.sh" post_fs_data 2>&1)

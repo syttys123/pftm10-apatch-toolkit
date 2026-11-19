@@ -25,6 +25,13 @@ if ($LASTEXITCODE -ne 0) {
     throw "Module loader verification failed"
 }
 
+& (Join-Path $repoRoot 'kpms\pftm10-cpuhold\build.ps1') `
+    -Zig $Zig `
+    -KernelPatchRoot $KernelPatchRoot
+if ($LASTEXITCODE -ne 0) {
+    throw "CPUHOLD KPM build failed"
+}
+
 & (Join-Path $repoRoot 'modules\build-pftm10-control.ps1') -Zig $Zig -OutputDirectory $outputRoot
 if ($LASTEXITCODE -ne 0) {
     throw "System module build failed"
@@ -44,6 +51,15 @@ if ($LASTEXITCODE -ne 0) {
     throw "KPM verification failed"
 }
 
+$cpuHoldKpmSource = Join-Path $repoRoot 'kpms\pftm10-cpuhold\pftm10-cpuhold.kpm'
+$cpuHoldKpmDestination = Join-Path $outputRoot 'pftm10-cpuhold.kpm'
+Copy-Item -LiteralPath $cpuHoldKpmSource -Destination $cpuHoldKpmDestination -Force
+
+& (Join-Path $PSScriptRoot 'verify-kpm.ps1') -KpmPath $cpuHoldKpmDestination
+if ($LASTEXITCODE -ne 0) {
+    throw "CPUHOLD KPM verification failed"
+}
+
 $moduleProp = Get-Content -LiteralPath (Join-Path $repoRoot 'modules\pftm10-control\module.prop')
 $moduleVersionLine = $moduleProp |
     Where-Object { $_ -match '^version=' } |
@@ -55,7 +71,7 @@ $moduleVersion = ($moduleVersionLine -split '=', 2)[1].Trim()
 $expectedModuleZip = "pftm10-control-v$moduleVersion.zip"
 
 $artifacts = Get-ChildItem -LiteralPath $outputRoot -File |
-    Where-Object { $_.Name -in @($expectedModuleZip, 'pftm10-kprobe.kpm') } |
+    Where-Object { $_.Name -in @($expectedModuleZip, 'pftm10-kprobe.kpm', 'pftm10-cpuhold.kpm') } |
     ForEach-Object {
         [ordered]@{
             name = $_.Name
@@ -66,7 +82,7 @@ $artifacts = Get-ChildItem -LiteralPath $outputRoot -File |
     }
 
 $manifest = [ordered]@{
-    release = 'v1.6.4'
+    release = 'v1.6.5'
     builder = 'syttys123'
     artifacts = $artifacts
 }

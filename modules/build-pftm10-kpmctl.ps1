@@ -3,7 +3,8 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$Zig,
     [Parameter(Mandatory = $true)]
-    [string]$OutputPath
+    [string]$OutputPath,
+    [string]$KpmName = 'pftm10-kprobe'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -21,6 +22,7 @@ New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
     -Os `
     -static `
     -fno-pie `
+    "-DKPM_NAME=`"$KpmName`"" `
     '-Wl,-z,noexecstack' `
     -o $OutputPath `
     $source

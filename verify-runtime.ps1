@@ -37,7 +37,7 @@ Add-Check 'modem' ($props -match '(?m)^ready$') 'md1=ready'
 
 $modules = Invoke-RootShell '/data/adb/apd module list'
 foreach ($item in @(
-    @('pftm10-control', '1.5.5'),
+    @('pftm10-control', '1.5.6'),
     @('pftm10-agent', '0.4.5'),
     @('pftm10-kernel-modules', '1.0.7')
 )) {
@@ -66,6 +66,18 @@ $hashFiles = @(
     @{
         Local = 'E:\AI\pftm10\pftm10-apatch-toolkit\modules\pftm10-control\bin\charge-3a-watchdog.sh'
         Device = '/data/adb/modules/pftm10-control/bin/charge-3a-watchdog.sh'
+    },
+    @{
+        Local = 'E:\AI\pftm10\pftm10-apatch-toolkit\modules\pftm10-control\bin\cpu-max-watchdog.sh'
+        Device = '/data/adb/modules/pftm10-control/bin/cpu-max-watchdog.sh'
+    },
+    @{
+        Local = 'E:\AI\pftm10\pftm10-apatch-toolkit\artifacts\stage\bin\pftm10-cpuholdctl'
+        Device = '/data/adb/modules/pftm10-control/bin/pftm10-cpuholdctl'
+    },
+    @{
+        Local = 'E:\AI\pftm10\pftm10-apatch-toolkit\kpms\pftm10-cpuhold\pftm10-cpuhold.kpm'
+        Device = '/data/adb/modules/pftm10-control/kpm/pftm10-cpuhold.kpm'
     },
     @{
         Local = 'E:\AI\pftm10\pftm10-apatch-toolkit\modules\pftm10-control\bin\boot-audit.sh'
@@ -119,6 +131,40 @@ $control = Invoke-RootShell '/data/adb/modules/pftm10-control/bin/pftm10ctl heal
 Add-Check 'control_health' ($control -match 'health=ok') 'health=ok'
 Add-Check 'control_kprobe' ($control -match 'kprobe_control=ok') 'kprobe_control=ok'
 
+$cpuMaxDeadline = (Get-Date).AddSeconds(60)
+do {
+    $cpuMax = Invoke-RootShell '/data/adb/modules/pftm10-control/bin/pftm10ctl cpu-max status'
+    $cpuMaxReady = (
+        $cpuMax -match '(?m)^cpu_max=disabled$' -or
+        ($cpuMax -match '(?m)^cpu_max=armed$' -and
+         $cpuMax -match '(?m)^cpu_max_kpm=loaded$' -and
+         $cpuMax -match '(?m)^cpu_max_watchdog=running$')
+    )
+    if (-not $cpuMaxReady) {
+        Start-Sleep -Seconds 2
+    }
+} while (-not $cpuMaxReady -and (Get-Date) -lt $cpuMaxDeadline)
+
+$cpuMaxMode = if ($cpuMax -match '(?m)^cpu_max=(disabled|armed)$') {
+    $matches[1]
+} else {
+    'invalid'
+}
+Add-Check 'cpu_max_state' ($cpuMaxMode -in @('disabled', 'armed')) "cpu_max=$cpuMaxMode"
+if ($cpuMaxMode -eq 'disabled') {
+    Add-Check 'cpu_max_default_kpm' ($cpuMax -match '(?m)^cpu_max_kpm=unloaded$') 'unloaded'
+} else {
+    Add-Check 'cpu_max_kpm' ($cpuMax -match '(?m)^cpu_max_kpm=loaded$') 'loaded'
+    Add-Check 'cpu_max_watchdog' ($cpuMax -match '(?m)^cpu_max_watchdog=running$') 'running'
+}
+Add-Check 'control_cpuholdctl' ($cpuMax -match '(?m)^cpu_max_target_khz=2400000$') 'target=2400000'
+if ($cpuMaxMode -eq 'armed') {
+    $cpuHoldControl = Invoke-RootShell '/data/adb/modules/pftm10-control/bin/pftm10-cpuholdctl help'
+    Add-Check 'cpuhold_control' ($cpuHoldControl -match 'cpu-max:<khz>') 'cpu-max:<khz>'
+} else {
+    Add-Check 'cpuhold_control' $true 'deferred_until_armed'
+}
+
 $kernelState = Invoke-RootShell 'getprop pftm10.kernel_modules.state'
 Add-Check 'kernel_modules_state' ($kernelState -eq 'loaded') $kernelState
 
@@ -148,5 +194,5 @@ if ($failures.Count -ne 0) {
     exit 1
 }
 
-Write-Output 'PFTM10_RUNTIME_OK control=1.5.5 agent=0.4.5 kernel_modules=1.0.7 tee=running md1=ready'
+Write-Output "PFTM10_RUNTIME_OK control=1.5.6 agent=0.4.5 kernel_modules=1.0.7 cpu_max=$cpuMaxMode tee=running md1=ready"
 exit 0

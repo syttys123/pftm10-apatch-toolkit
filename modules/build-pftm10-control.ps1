@@ -2,12 +2,19 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$Zig,
-    [string]$OutputDirectory = (Join-Path $PSScriptRoot 'dist')
+    [string]$OutputDirectory = (Join-Path $PSScriptRoot 'dist'),
+    [string]$CpuHoldKpm
 )
 
 $ErrorActionPreference = 'Stop'
 
 $moduleSource = Join-Path $PSScriptRoot 'pftm10-control'
+if (-not $CpuHoldKpm) {
+    $CpuHoldKpm = Join-Path (Split-Path -Parent $PSScriptRoot) 'kpms\pftm10-cpuhold\pftm10-cpuhold.kpm'
+}
+if (-not (Test-Path -LiteralPath $CpuHoldKpm)) {
+    throw "CPUHOLD KPM not found: $CpuHoldKpm"
+}
 $outputRoot = [IO.Path]::GetFullPath($OutputDirectory)
 $stage = [IO.Path]::GetFullPath((Join-Path $outputRoot 'stage'))
 $moduleProp = Get-Content -LiteralPath (Join-Path $moduleSource 'module.prop')
@@ -43,6 +50,18 @@ Get-ChildItem -LiteralPath $moduleSource -Recurse -File | ForEach-Object {
 if ($LASTEXITCODE -ne 0) {
     throw "KPM control helper build failed"
 }
+
+& (Join-Path $PSScriptRoot 'build-pftm10-kpmctl.ps1') `
+    -Zig $Zig `
+    -OutputPath (Join-Path $stage 'bin\pftm10-cpuholdctl') `
+    -KpmName 'pftm10-cpuhold'
+if ($LASTEXITCODE -ne 0) {
+    throw "CPUHOLD control helper build failed"
+}
+
+$cpuHoldStage = Join-Path $stage 'kpm\pftm10-cpuhold.kpm'
+New-Item -ItemType Directory -Path (Split-Path -Parent $cpuHoldStage) -Force | Out-Null
+Copy-Item -LiteralPath $CpuHoldKpm -Destination $cpuHoldStage -Force
 
 if (Test-Path -LiteralPath $zipPath) {
     Remove-Item -LiteralPath $zipPath -Force

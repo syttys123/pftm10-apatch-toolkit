@@ -18,6 +18,10 @@ Files:
 - `bin/pftm10-kpmctl`: static root-only adapter that drops to the APatch
   manager UID and calls `pftm10-kprobe` control0 through the KernelPatch
   supercall ABI.
+- `bin/pftm10-cpuholdctl`: the same bounded adapter compiled for the separate
+  `pftm10-cpuhold` KPM.
+- `bin/cpu-max-watchdog.sh`: reapplies the independent CPUHOLD policy while its
+  sentinel exists and rolls it back on thermal or battery limits.
 - `bin/charge-3a-watchdog.sh`: while explicitly armed and while the live PD
   contract remains at least `5V/3000mA`, reapplies the gated 3A input request
   after OPPO charger policy rewrites it.
@@ -65,6 +69,10 @@ pftm10ctl charge-3a status
 pftm10ctl charge-3a enable
 pftm10ctl charge-3a disable
 pftm10ctl charge-3a apply
+pftm10ctl cpu-max status
+pftm10ctl cpu-max enable
+pftm10ctl cpu-max disable
+pftm10ctl cpu-max apply
 pftm10ctl root
 pftm10ctl bootlog
 pftm10ctl crashlog
@@ -83,6 +91,14 @@ state-changing commands are charger suspend recovery and PD-gated AICR control.
 `charger-3a` refuses to write 3A unless `tcpm_inquire_pd_contract()` confirms a
 `5V/3000mA` contract. `charge-3a disable` stops the watchdog and restores AICL
 plus the 500mA request.
+
+`cpu-max` is intentionally opt-in. `cpu-max enable` creates
+`/data/adb/pftm10-control/cpu-max.enabled`, loads the separate
+`pftm10-cpuhold` KPM, applies the 2.4GHz big-core policy ceiling, and starts
+the watchdog. `cpu-max disable` removes the sentinel, disables the hook,
+unloads the KPM, and restores the normal OPPO policy. The watchdog rolls back
+at `70C` thermal, `45C` battery, or `5%` battery. The default state is
+disabled.
 
 On the current standard USB host connection, the hidden suspend state leaves
 MT6360 at `IBUS=0 / IBAT=0` while `CHG_EN=1`. `service.sh` records

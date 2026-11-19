@@ -13,7 +13,9 @@
 #define KP_VERSION_CODE 0x0d09L
 #define KP_COMMAND_MAGIC 0x1158L
 #define SUPERCALL_KPM_CONTROL 0x1022L
+#ifndef KPM_NAME
 #define KPM_NAME "pftm10-kprobe"
+#endif
 #define MAX_CONTROL_ARGS 2048
 #define MAX_REPLY 4096
 #define CONTROL_LOCK "/data/adb/pftm10-control/kpmctl.lock"

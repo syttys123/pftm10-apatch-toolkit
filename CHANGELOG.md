@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.6.5 - 2026-11-19
+
+- add the separate `pftm10-cpuhold` 0.2.2 KPM and select it through a bounded
+  `pftm10-cpuholdctl` adapter without replacing `pftm10-kprobe`
+- bump `pftm10-control` to `1.5.6` / versionCode `17` with an opt-in
+  `cpu-max status|enable|disable|apply` state machine
+- keep CPUHOLD disabled by default behind
+  `/data/adb/pftm10-control/cpu-max.enabled`; replay it from `service.sh`
+  only when that sentinel exists
+- add a watchdog that reapplies the 2.4GHz policy and rolls back on `70C`
+  thermal, `45C` battery, or `5%` battery
+- verify default-off boot, explicit enable, 12/12 load samples at
+  `policy6_max=2400000` and `policy6_cur=2400000`, reboot persistence with the
+  sentinel present, and disable/unload rollback
+- extend runtime/device gates with CPUHOLD file hashes, state, watchdog, and
+  KPM load checks
+
 ## v1.6.4 - 2026-11-19
 
 - publish the current `pftm10-kernel-modules` 1.0.7 loader instead of the

@@ -42,7 +42,7 @@ $module = $modules | Where-Object { $_.id -eq 'pftm10-control' } | Select-Object
 if (-not $module) {
     throw "pftm10-control is not installed"
 }
-if ($module.version -ne '1.5.5' -or $module.versionCode -ne '16') {
+if ($module.version -ne '1.5.6' -or $module.versionCode -ne '17') {
     throw "Unexpected pftm10-control version"
 }
 if ($module.enabled -ne 'true' -or $module.update -ne 'false') {
@@ -73,6 +73,38 @@ if ($caps -notmatch '(?m)^kprobe_control=ok$') {
 }
 if ($caps -notmatch '(?m)^battery_restrict=masked$') {
     throw "Battery restrict crash mask is not active"
+}
+
+$cpuMaxDeadline = (Get-Date).AddSeconds(60)
+do {
+    $cpuMax = (
+        & $Adb -s $Device shell "su -c '/data/adb/modules/pftm10-control/bin/pftm10ctl cpu-max status'" 2>&1
+    ) -join "`n"
+    $cpuMaxReady = (
+        $cpuMax -match '(?m)^cpu_max=disabled$' -or
+        ($cpuMax -match '(?m)^cpu_max=armed$' -and
+         $cpuMax -match '(?m)^cpu_max_kpm=loaded$' -and
+         $cpuMax -match '(?m)^cpu_max_watchdog=running$')
+    )
+    if (-not $cpuMaxReady) {
+        Start-Sleep -Seconds 2
+    }
+} while (-not $cpuMaxReady -and (Get-Date) -lt $cpuMaxDeadline)
+if ($cpuMax -notmatch '(?m)^cpu_max=(disabled|armed)$') {
+    throw "CPU max policy state is invalid"
+}
+$cpuMaxMode = $matches[1]
+if ($cpuMaxMode -eq 'disabled') {
+    if ($cpuMax -notmatch '(?m)^cpu_max_kpm=unloaded$' -or
+        $cpuMax -notmatch '(?m)^cpu_max_watchdog=missing$') {
+        throw "Disabled CPU max policy left a loaded KPM or watchdog"
+    }
+} else {
+    if ($cpuMax -notmatch '(?m)^cpu_max_kpm=loaded$' -or
+        $cpuMax -notmatch '(?m)^cpu_max_watchdog=running$' -or
+        $cpuMax -notmatch '(?m)^cpu_max_target_khz=2400000$') {
+        throw "Armed CPU max policy is incomplete"
+    }
 }
 
 $cameraFine = (
@@ -207,8 +239,9 @@ if ($charge3aArmed -match '(?m)^0$') {
 }
 
 Write-Output (
-    "DEVICE_CHECK_OK module={0} versionCode={1} health=ok capabilities=ok kpm=1.4.6 control=ok crash_audit=ok charger_unsuspend=ok charger_3a={2} soc_reconcile=ok vintf_debugfs_override=mounted battery_restrict=masked privacy=camera_location_denied,oshare_bg_denied event=post-fs-data" -f
+    "DEVICE_CHECK_OK module={0} versionCode={1} health=ok capabilities=ok kpm=1.4.6 control=ok cpu_max={3} crash_audit=ok charger_unsuspend=ok charger_3a={2} soc_reconcile=ok vintf_debugfs_override=mounted battery_restrict=masked privacy=camera_location_denied,oshare_bg_denied event=post-fs-data" -f
         $module.version,
         $module.versionCode,
-        $charger3aMode
+        $charger3aMode,
+        $cpuMaxMode
 )

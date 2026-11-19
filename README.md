@@ -30,6 +30,7 @@ docs/                         Reproducible workflow and recovery notes
 kernel/                       Pinned MT6833 kernel cloud-build inputs
 kernel/patches/               Source patches required by rebuilt vendor modules
 kpms/pftm10-kprobe/           Bounded KPM with charger recovery and PD-gated 3A
+kpms/pftm10-cpuhold/          Reversible cpufreq max-policy KPM, opt-in only
 modules/pftm10-control/       Minimal APatch system module
 module-loader/                Rebuilt vendor-module loader source and builder
 tools/                        Build, install, and privacy-validation helpers

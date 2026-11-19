@@ -6,6 +6,7 @@ LOG="$STATE/boot.log"
 
 mkdir -p "$STATE"
 chmod 0755 "$MODDIR/bin/pftm10ctl" "$MODDIR/bin/pftm10-kpmctl" \
+    "$MODDIR/bin/pftm10-cpuholdctl" "$MODDIR/bin/cpu-max-watchdog.sh" \
     "$MODDIR/bin/charge-3a-watchdog.sh" "$MODDIR/bin/boot-audit.sh" 2>/dev/null
 
 i=0
@@ -30,6 +31,9 @@ charger_3a_rc=99
 charger_3a_watchdog_pid=none
 soc_reconcile_output="not_run"
 soc_reconcile_rc=99
+cpu_max=disabled
+cpu_max_output="not_run"
+cpu_max_rc=99
 
 if [ ! -f "$STATE/privacy.disabled" ]; then
     privacy_policy=enabled
@@ -72,6 +76,16 @@ done
 
 charger_unsuspend_output=$("$MODDIR/bin/pftm10ctl" kprobe-ctl charger-unsuspend 2>&1)
 charger_unsuspend_rc=$?
+
+if [ -f "$STATE/cpu-max.enabled" ]; then
+    cpu_max=enabled
+    cpu_max_output=$("$MODDIR/bin/pftm10ctl" cpu-max enable 2>&1)
+    cpu_max_rc=$?
+    case "$cpu_max_output" in
+        *cpu_max=armed*) ;;
+        *) cpu_max=enable_failed ;;
+    esac
+fi
 
 if [ -f "$STATE/charge-3a.enabled" ]; then
     if [ -f "$STATE/charge-3a.pid" ]; then
@@ -143,6 +157,9 @@ done
     echo "charger_3a_rc=$charger_3a_rc"
     echo "charger_3a_output=$charger_3a_output"
     echo "charger_3a_watchdog_pid=$charger_3a_watchdog_pid"
+    echo "cpu_max=$cpu_max"
+    echo "cpu_max_rc=$cpu_max_rc"
+    echo "cpu_max_output=$cpu_max_output"
     echo "soc_reconcile_rc=$soc_reconcile_rc"
     echo "soc_reconcile=$soc_reconcile_output"
 } >> "$LOG"
